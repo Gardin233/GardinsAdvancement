@@ -2,30 +2,24 @@ package org.gardin.gardinsadvancement.tabcreater;
 
 public class Tab {
     private final String nameSpace;
-    private final String name;
-    private final String icon;
     private final String background;
+    private final TabDisplayMode displayMode;
 
-    public Tab(String nameSpace, String name, String icon, String background) {
+    public Tab(String nameSpace, String background, TabDisplayMode displayMode) {
         this.nameSpace = nameSpace;
-        this.name = name;
-        this.icon = icon;
         this.background = background;
+        this.displayMode = displayMode;
     }
 
     public String getNameSpace() {
         return this.nameSpace;
     }
 
-    public String getName() {
-        return this.name;
-    }
-
-    public String getIcon() {
-        return this.icon;
-    }
-
     public String getBackgroundTexture() {
         return this.background;
+    }
+
+    public TabDisplayMode getDisplayMode() {
+        return displayMode;
     }
 }

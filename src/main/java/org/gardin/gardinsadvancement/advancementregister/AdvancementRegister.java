@@ -6,8 +6,11 @@ import com.fren_gor.ultimateAdvancementAPI.advancement.Advancement;
 import com.fren_gor.ultimateAdvancementAPI.advancement.BaseAdvancement;
 import com.fren_gor.ultimateAdvancementAPI.advancement.RootAdvancement;
 import com.fren_gor.ultimateAdvancementAPI.advancement.display.AdvancementDisplay;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.gardin.gardinsadvancement.conf.Gconfig;
 import org.gardin.gardinsadvancement.tabcreater.Tab;
+import org.gardin.gardinsadvancement.tabcreater.TabDisplayMode;
 import org.gardin.gardinsadvancement.textchecker.ContentDocument;
 import org.gardin.gardinsadvancement.util.GLogger;
 
@@ -123,6 +126,7 @@ public class AdvancementRegister {
             GLogger.error("进度 " + buildKey(tabId, definition.getId()) + " 找不到父进度 " + definition.getParentId());
         }
         tab.registerAdvancements(rootAdvancement, children);
+        configureTabDisplay(tab, tabMeta, rootAdvancement);
         GLogger.debug("完成注册 Tab " + tabId + "，共 " + (children.size() + 1) + " 个进度");
     }
 
@@ -156,5 +160,30 @@ public class AdvancementRegister {
 
     public Map<String, Advancement> getRegisteredAdvancements() {
         return Map.copyOf(advancements);
+    }
+
+    private void configureTabDisplay(AdvancementTab tab, Tab tabMeta, RootAdvancement rootAdvancement) {
+        TabDisplayMode displayMode = tabMeta == null ? TabDisplayMode.DIRECT : tabMeta.getDisplayMode();
+        switch (displayMode) {
+            case DIRECT -> {
+                tab.automaticallyShowToPlayers();
+                GLogger.info("&fTab " + tab.getNamespace() + " 已启用直接显示模式");
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (!tab.isShownTo(player)) {
+                        tab.showTab(player);
+                    }
+                }
+            }
+            case INDIRECT -> {
+                tab.automaticallyGrantRootAdvancement();
+                GLogger.info("&fTab " + tab.getNamespace() + " 已启用间接显示模式，将自动授予 root");
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (!rootAdvancement.isGranted(player)) {
+                        tab.grantRootAdvancement(player, false);
+                    }
+                }
+            }
+            case MANUAL -> GLogger.info("&fTab " + tab.getNamespace() + " 已启用手动显示模式，不自动展示");
+        }
     }
 }

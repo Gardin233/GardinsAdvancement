@@ -1,28 +1,33 @@
 tabs:
   novice_path:
-    name: "&6新手之路"
-    icon: DIAMOND
+    # Tab 显示模式:
+    # direct   -> 直接显示 Tab，即使玩家还没有这个页签下的任何成就
+    # indirect -> 通过自动授予 root 间接显示 Tab
+    # manual   -> 不自动处理 Tab 显示
+    display-mode: direct
     background: "minecraft:textures/block/stone.png"
     advancements:
       novice_root:
         type: root
+        conditions:
+          - "placeholder: %player_level% >= 0"
         data:
-          title: "&a初入世界"
-          icon: CE:namespace:PAPER
+          title: "初入世界"
+          icon: minecraft:acacia_door
           frame: task
           show_toast: true
           announce_chat: true
           x: 10
           y: 20
           description:
-            - "&7这是新手线路的根节点"
+            - "这是新手线路的根节点"
       novice_step_one:
         type: common
         parent: novice_root
         conditions:
           - "placeholder: %player_level% >= 5"
         data:
-          title: "&b迈出第一步"
+          title: "迈出第一步"
           icon: CE:customfishing:sturgeon_fish_golden_star
           frame: goal
           show_toast: true
@@ -30,50 +35,5 @@ tabs:
           x: 12
           y: 20
           description:
-            - "&7这个普通节点绑定在 novice_root 下"
-
-      explorer_root:
-        type: root
-        data:
-          title: "&a探索开始"
-          icon: CE:namespace:PAPER
-          frame: task
-          show_toast: true
-          announce_chat: true
-          x: 10
-          y: 10
-          description:
-            - "&7这是第二条线路的根节点"
-
-      explorer_step_one:
-        type: common
-        parent: explorer_root
-        conditions:
-          - "placeholder: %player_level% >= 10"
-        data:
-          title: "&b探索者 I"
-          icon: CE:namespace:PAPER
-          frame: goal
-          show_toast: true
-          announce_chat: true
-          x: 12
-          y: 18
-          description:
-            - "&7这个普通节点绑定在 explorer_root 下"
-      explorer_step_two:
-        type: common
-        parent: explorer_root
-        conditions:
-          - "placeholder: %player_level% >= 15 && %player_food_level% <= 17"
-        data:
-          title: "&d探索者 II"
-          icon: CE:namespace:PAPER
-          frame: challenge
-          show_toast: true
-          announce_chat: true
-          x: 12
-          y: 22
-          description:
-            - "&7这个普通节点也绑定在 explorer_root 下"
-
+            - "这个普通节点绑定在 novice_root 下"
 

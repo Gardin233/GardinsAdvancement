@@ -7,6 +7,7 @@ import org.gardin.gardinsadvancement.advancementregister.AdvancementData;
 import org.gardin.gardinsadvancement.advancementregister.GAdvancement;
 import org.gardin.gardinsadvancement.conf.Gconfig;
 import org.gardin.gardinsadvancement.tabcreater.Tab;
+import org.gardin.gardinsadvancement.tabcreater.TabDisplayMode;
 import org.gardin.gardinsadvancement.util.GLogger;
 
 import java.io.File;
@@ -108,24 +109,22 @@ public class ContentLoader {
             }
             Tab tab = parseTab(tabId, tabSection);
             tabs.add(tab);
-            GLogger.info("&f已解析 Tab: " + tabId + "，name=" + tab.getName());
+            GLogger.info("&f已解析 Tab: " + tabId + "，display-mode=" + tab.getDisplayMode().name().toLowerCase());
             parseAdvancements(source, tabId, tabSection, advancements, knownAdvancements);
         }
     }
 
     private Tab parseTab(String tabId, ConfigurationSection section) {
-        String name = YamlLexicalParser.readString(section, "name", tabId);
-        String icon = YamlLexicalParser.readString(
-                section,
-                "icon",
-                gconfig.getFallbackIcon().name()
-        );
         String background = YamlLexicalParser.readString(
                 section,
                 "background",
                 gconfig.getDefaultTabBackground()
         );
-        return new Tab(tabId, name, icon, background);
+        TabDisplayMode displayMode = TabDisplayMode.parse(
+                section.getString("display-mode"),
+                "tabs." + tabId
+        );
+        return new Tab(tabId, background, displayMode);
     }
 
     private void parseAdvancements(

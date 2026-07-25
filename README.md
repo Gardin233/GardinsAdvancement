@@ -26,8 +26,6 @@ Gardin's Advancement 正是基于这一理念设计的。
 ```yml
 tabs:
   novice_path:
-    name: "新手之路"
-    icon: minecraft:diamond
     background: "minecraft:textures/block/stone.png"
     advancements:
       novice_root:
