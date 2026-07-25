@@ -1,0 +1,16 @@
+name: Gardinsadvancement
+version: '1.0-SNAPSHOT'
+main: org.gardin.gardinsadvancement.Gardinsadvancement
+api-version: '1.21'
+load: POSTWORLD
+depend: [PlaceholderAPI]
+softdepend: [CraftEngine]
+commands:
+  gardinsadvancement:
+    aliases: [ga]
+    description: GardinsAdvancement 主命令
+    usage: /<command> reload
+permissions:
+  gardinsadvancement.reload:
+    description: 允许重载 GardinsAdvancement 设置
+    default: op

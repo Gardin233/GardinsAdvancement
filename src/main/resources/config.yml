@@ -1,0 +1,15 @@
+#
+# GardinsAdvancement 全局配置
+# 20 ticks = 1 秒
+#
+
+debug: true
+content-folder: content
+copy-example-content: true
+default-tab-background: "minecraft:textures/gui/advancements/backgrounds/stone.png"
+fallback-icon: STONE
+# Placeholder 条件轮询间隔，最小为 20 ticks
+# 调小会更快判定成就，调大则更省性能
+placeholder-check-interval-ticks: 100
+# 启动后延迟初始化的时间，给 CraftEngine 等依赖留出加载时间
+startup-delay-ticks: 60
