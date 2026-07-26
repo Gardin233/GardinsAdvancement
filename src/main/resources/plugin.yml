@@ -1,5 +1,5 @@
 name: Gardinsadvancement
-version: '1.0-SNAPSHOT'
+version: '0.1.0'
 main: org.gardin.gardinsadvancement.Gardinsadvancement
 api-version: '1.21'
 load: POSTWORLD
