@@ -172,7 +172,7 @@ public class ContentLoader {
         }
         AdvancementData advancementData = new AdvancementData(
                 advancementId,
-                YamlLexicalParser.readString(dataSection, "title", advancementId),
+                YamlLexicalParser.readColoredString(dataSection, "title", advancementId),
                 YamlLexicalParser.parseIcon(
                         dataSection.getString("icon"),
                         gconfig.getFallbackIcon(),
@@ -184,7 +184,7 @@ public class ContentLoader {
                 (float) dataSection.getDouble("x", 0.0D),
                 (float) dataSection.getDouble("y", 0.0D),
                 YamlLexicalParser.parseColor(dataSection.getString("color"), location + ".data.color"),
-                YamlLexicalParser.readStringList(dataSection, "description")
+                YamlLexicalParser.readColoredStringList(dataSection, "description")
         );
         List<String> conditions = YamlLexicalParser.readStringList(section, "conditions");
         GLogger.debug("加载进度: " + tabId + ":" + advancementId

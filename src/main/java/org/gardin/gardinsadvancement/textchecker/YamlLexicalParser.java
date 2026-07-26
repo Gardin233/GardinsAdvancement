@@ -27,6 +27,14 @@ public final class YamlLexicalParser {
         return trimmed.isEmpty() ? fallback : trimmed;
     }
 
+    public static String readColoredString(ConfigurationSection section, String path, String fallback) {
+        String value = readString(section, path, fallback);
+        if (value == null) {
+            return null;
+        }
+        return colorizeText(value);
+    }
+
     public static List<String> readStringList(ConfigurationSection section, String path) {
         List<String> rawList = section.getStringList(path);
         if (!rawList.isEmpty()) {
@@ -39,6 +47,18 @@ public final class YamlLexicalParser {
         return List.of(singleValue.trim());
     }
 
+    public static List<String> readColoredStringList(ConfigurationSection section, String path) {
+        List<String> rawList = section.getStringList(path);
+        if (!rawList.isEmpty()) {
+            return normalizeColoredStrings(rawList);
+        }
+        String singleValue = section.getString(path);
+        if (singleValue == null || singleValue.isBlank()) {
+            return List.of();
+        }
+        return List.of(colorizeText(singleValue.trim()));
+    }
+
     public static List<String> normalizeStrings(List<String> values) {
         List<String> result = new ArrayList<>();
         for (String value : values) {
@@ -48,6 +68,20 @@ public final class YamlLexicalParser {
             String trimmed = value.trim();
             if (!trimmed.isEmpty()) {
                 result.add(trimmed);
+            }
+        }
+        return result;
+    }
+
+    public static List<String> normalizeColoredStrings(List<String> values) {
+        List<String> result = new ArrayList<>();
+        for (String value : values) {
+            if (value == null) {
+                continue;
+            }
+            String trimmed = value.trim();
+            if (!trimmed.isEmpty()) {
+                result.add(colorizeText(trimmed));
             }
         }
         return result;
@@ -81,6 +115,12 @@ public final class YamlLexicalParser {
             return null;
         }
         String normalized = rawColor.trim();
+        if (normalized.length() == 2 && normalized.charAt(0) == '&') {
+            ChatColor legacyColor = parseLegacyColor(normalized.charAt(1));
+            if (legacyColor != null) {
+                return legacyColor;
+            }
+        }
         try {
             if (normalized.startsWith("#")) {
                 return ChatColor.of(normalized);
@@ -128,5 +168,31 @@ public final class YamlLexicalParser {
     }
     private static ItemStack parseCraftEngineIcon(String rawId, String source) {
         return CraftEngine.resolveItem(rawId, source);
+    }
+
+    public static String colorizeText(String text) {
+        return org.bukkit.ChatColor.translateAlternateColorCodes('&', text);
+    }
+
+    private static ChatColor parseLegacyColor(char code) {
+        return switch (Character.toLowerCase(code)) {
+            case '0' -> ChatColor.BLACK;
+            case '1' -> ChatColor.DARK_BLUE;
+            case '2' -> ChatColor.DARK_GREEN;
+            case '3' -> ChatColor.DARK_AQUA;
+            case '4' -> ChatColor.DARK_RED;
+            case '5' -> ChatColor.DARK_PURPLE;
+            case '6' -> ChatColor.GOLD;
+            case '7' -> ChatColor.GRAY;
+            case '8' -> ChatColor.DARK_GRAY;
+            case '9' -> ChatColor.BLUE;
+            case 'a' -> ChatColor.GREEN;
+            case 'b' -> ChatColor.AQUA;
+            case 'c' -> ChatColor.RED;
+            case 'd' -> ChatColor.LIGHT_PURPLE;
+            case 'e' -> ChatColor.YELLOW;
+            case 'f' -> ChatColor.WHITE;
+            default -> null;
+        };
     }
 }

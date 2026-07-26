@@ -1,4 +1,5 @@
 # Gardin's Advancement
+![GitHub License](https://img.shields.io/github/license/Gardin233/GardinsAdvancement)
 您不想写自己的数据包：那对于您来说太过复杂，所以您想要一个插件，通过更友善的yml实现将自定义成就添加进你的服务器。
 但一直以来我们的成就都依赖于插件开发者制作的事件监听器，这实际上对用户产生了一些限制：
 譬如使用当您使用CraftEngine时，除非作者编写了对应的适配，不然他的自定义成就系统永远无法知道用户拿到的是一张纸还是一个食物。
@@ -26,13 +27,16 @@ Gardin's Advancement 正是基于这一理念设计的。
 ```yml
 tabs:
   novice_path:
+    display-mode: direct
     background: "minecraft:textures/block/stone.png"
     advancements:
       novice_root:
         type: root
+        conditions:
+          - "placeholder: %player_level% >= 0"
         data:
           title: "初入世界"
-          icon: CE:namespace:PAPER
+          icon: minecraft:acacia_door
           frame: task
           show_toast: true
           announce_chat: true
@@ -46,7 +50,7 @@ tabs:
         conditions:
           - "placeholder: %player_level% >= 5"
         data:
-          title: "&b迈出第一步"
+          title: "迈出第一步"
           icon: CE:customfishing:sturgeon_fish_golden_star
           frame: goal
           show_toast: true
@@ -54,52 +58,5 @@ tabs:
           x: 12
           y: 20
           description:
-            - "&7这个普通节点绑定在 novice_root 下"
-
-      explorer_root:
-        type: root
-        data:
-          title: "探索开始"
-          icon: CE:namespace:PAPER
-          frame: task
-          show_toast: true
-          announce_chat: true
-          x: 10
-          y: 10
-          description:
-            - "这是第二条线路的根节点"
-
-      explorer_step_one:
-        type: common
-        parent: explorer_root
-        conditions:
-          - "placeholder: %player_level% >= 10"
-        data:
-          title: "&b探索者 I"
-          icon: CE:namespace:PAPER
-          frame: goal
-          show_toast: true
-          announce_chat: true
-          x: 12
-          y: 18
-          description:
-            - "这个普通节点绑定在 explorer_root 下"
-      explorer_step_two:
-        type: common
-        parent: explorer_root
-        conditions:
-          - "placeholder: %player_level% >= 15 && %player_food_level% <= 17"
-        data:
-          title: "探索者 II"
-          icon: CE:namespace:PAPER
-          frame: challenge
-          show_toast: true
-          announce_chat: true
-          x: 12
-          y: 22
-          description:
-            - "这个普通节点也绑定在 explorer_root 下"
+            - "这个普通节点绑定在 novice_root 下"
 ```
-
-# 当前待解决的问题
-颜色代码的支持还不起作用
