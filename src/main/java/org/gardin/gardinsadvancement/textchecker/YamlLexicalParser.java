@@ -47,6 +47,26 @@ public final class YamlLexicalParser {
         return List.of(singleValue.trim());
     }
 
+    public static List<String> readMultilineStringList(ConfigurationSection section, String path) {
+        List<String> rawList = section.getStringList(path);
+        if (!rawList.isEmpty()) {
+            return normalizeStrings(rawList);
+        }
+        String singleValue = section.getString(path);
+        if (singleValue == null || singleValue.isBlank()) {
+            return List.of();
+        }
+        String[] lines = singleValue.split("\\R");
+        List<String> result = new ArrayList<>();
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (!trimmed.isEmpty()) {
+                result.add(trimmed);
+            }
+        }
+        return result;
+    }
+
     public static List<String> readColoredStringList(ConfigurationSection section, String path) {
         List<String> rawList = section.getStringList(path);
         if (!rawList.isEmpty()) {

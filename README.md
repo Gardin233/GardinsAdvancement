@@ -1,5 +1,8 @@
 # Gardin's Advancement
 ![GitHub License](https://img.shields.io/github/license/Gardin233/GardinsAdvancement)
+前置:
+ - UltimateAdvancementAPI
+ - PlaceHolderAPI
 
 您不想写自己的数据包：那对于您来说太过复杂，所以您想要一个插件，通过更友善的yml将自定义的原生风格的进度添加进你的服务器。
 
@@ -61,6 +64,9 @@ tabs:
         type: root
         conditions:
           - "placeholder: %player_level% >= 0"
+        commands:
+            - "say %player_name% 已解锁根成就 novice_root"
+            - "tell %player_name% &a欢迎来到新手之路"
         data: #minecraft每个标签页下仅支持一个根进度，并且以根进度作为页面标题，以根进度icon作为标签页icon
           title: "初入世界"
           icon: minecraft:acacia_door
@@ -85,15 +91,25 @@ tabs:
           x: 12
           y: 20
           description:
-            - "这个普通节点绑定在 novice_root 下"
+            - "&a这个普通节点绑定在 novice_root 下"
 ```
 # 请注意
 如果您需要基于即时事件触发的成就系统（例如：玩家挖掘方块瞬间触发、击杀实体立即检测等），那么本插件可能不适合您的需求。
 Gardin's Advancement 的设计目标并不是替代事件监听系统，而是提供一个基于 PlaceholderAPI 的通用条件检测框架。
+## 性能问题
+
+本插件在启动时会预编译条件表达式并生成变量索引与成就一一对应，解析包含在表达式中的占位符,这样做避免了重复读取相同的占位符
+
+每次进行占位符读取，仅当占位符内容与缓存内容不一致时才会进行和此变量相关联的进度的条件检测
+
+当成就完成时，会自动检测占位符引用情况，当占位符再也不被需要，将被自动释放
+
+所以多次相同变量的引用并不会造成重大的性能问题。面对阶梯式的成就：5级->10级->15级 这种成就并不会占用什么性能，您可以尽情这样做
+
+当然，也因为这个机制，您无法热重载你的成就树，```reload ```指令唯一能做的就只有调整你的config设置里的检测频率和debug开关
 
 
-
-目前支持的图标适配：
+# 目前支持的图标适配：
 - [CraftEngine](https://github.com/Xiao-MoMi/craft-engine)
 
 ## 测试环境 

@@ -11,8 +11,11 @@ tabs:
         type: root
         conditions:
           - "placeholder: %player_level% >= 0"
+        commands:
+          - "say %player_name% 已解锁根成就 novice_root"
+          - "tell %player_name% &a欢迎来到新手之路"
         data:
-          title: "初入世界"
+          title: "&a初入世界"
           icon: minecraft:acacia_door
           frame: task
           show_toast: true
@@ -20,14 +23,17 @@ tabs:
           x: 10
           y: 20
           description:
-            - "这是新手线路的根节点"
+            - "&7这是新手线路的根节点"
       novice_step_one:
         type: common
         parent: novice_root
         conditions:
           - "placeholder: %player_level% >= 5"
+        commands: |
+          say %player_name% 已达成 novice_step_one
+          give %player_name% minecraft:diamond 1
         data:
-          title: "迈出第一步"
+          title: "&b迈出第一步"
           icon: CE:customfishing:sturgeon_fish_golden_star
           frame: goal
           show_toast: true
@@ -35,5 +41,5 @@ tabs:
           x: 12
           y: 20
           description:
-            - "这个普通节点绑定在 novice_root 下"
+            - "&7这个普通节点绑定在 novice_root 下"
 

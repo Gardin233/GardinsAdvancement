@@ -9,6 +9,7 @@ public class GAdvancement {
     private final AdvancementData data;
     private final String type;
     private final List<String> condition;
+    private final List<String> commands;
 
     public GAdvancement(
             String tab,
@@ -16,13 +17,15 @@ public class GAdvancement {
             String id,
             String type,
             AdvancementData data,
-            List<String> condition
+            List<String> condition,
+            List<String> commands
     ) {
         this.tab = tab;
         this.parentId = parentId;
         this.id = id;
         this.type = type;
         this.condition = List.copyOf(condition);
+        this.commands = List.copyOf(commands);
         this.data = data;
     }
 
@@ -44,6 +47,10 @@ public class GAdvancement {
 
     public List<String> getCondition() {
         return this.condition;
+    }
+
+    public List<String> getCommands() {
+        return commands;
     }
 
     public String getParentId() {

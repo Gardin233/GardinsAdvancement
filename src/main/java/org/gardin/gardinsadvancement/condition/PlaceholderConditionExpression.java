@@ -3,56 +3,79 @@ package org.gardin.gardinsadvancement.condition;
 import org.bukkit.entity.Player;
 import org.gardin.gardinsadvancement.hook.PlaceholderHook;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import static org.gardin.gardinsadvancement.condition.PlaceholderConditionToken.Type;
 
 public class PlaceholderConditionExpression {
     private final String source;
     private final ExpressionNode root;
+    private final Set<String> placeholders;
 
-    private PlaceholderConditionExpression(String source, ExpressionNode root) {
+    private PlaceholderConditionExpression(String source, ExpressionNode root, Set<String> placeholders) {
         this.source = source;
         this.root = root;
+        this.placeholders = Set.copyOf(placeholders);
     }
 
     public static PlaceholderConditionExpression compile(String source) {
         List<PlaceholderConditionToken> tokens = new PlaceholderConditionLexer(source).scanTokens();
+        Set<String> placeholders = new LinkedHashSet<>();
+        for (PlaceholderConditionToken token : tokens) {
+            if (token.type() == Type.PLACEHOLDER) {
+                placeholders.add(token.lexeme());
+            }
+        }
         ExpressionNode root = new Parser(source, tokens).parse();
-        return new PlaceholderConditionExpression(source, root);
+        return new PlaceholderConditionExpression(source, root, placeholders);
     }
 
     public boolean test(Player player, PlaceholderHook hook) {
-        return root.evaluate(player, hook).asBoolean();
+        return test(placeholder -> hook.resolve(player, placeholder));
     }
 
     public String getSource() {
         return source;
     }
 
+    public Set<String> getPlaceholders() {
+        return placeholders;
+    }
+
+    public boolean test(PlaceholderValueResolver resolver) {
+        return root.evaluate(resolver).asBoolean();
+    }
+
+    @FunctionalInterface
+    public interface PlaceholderValueResolver {
+        String resolve(String placeholder);
+    }
+
     private interface ExpressionNode {
-        ConditionValue evaluate(Player player, PlaceholderHook hook);
+        ConditionValue evaluate(PlaceholderValueResolver resolver);
     }
 
     private record LiteralNode(ConditionValue value) implements ExpressionNode {
         @Override
-        public ConditionValue evaluate(Player player, PlaceholderHook hook) {
+        public ConditionValue evaluate(PlaceholderValueResolver resolver) {
             return value;
         }
     }
 
     private record PlaceholderNode(String placeholder) implements ExpressionNode {
         @Override
-        public ConditionValue evaluate(Player player, PlaceholderHook hook) {
-            return ConditionValue.of(hook.resolve(player, placeholder));
+        public ConditionValue evaluate(PlaceholderValueResolver resolver) {
+            return ConditionValue.of(resolver.resolve(placeholder));
         }
     }
 
     private record UnaryNode(Type operator, ExpressionNode right) implements ExpressionNode {
         @Override
-        public ConditionValue evaluate(Player player, PlaceholderHook hook) {
-            ConditionValue value = right.evaluate(player, hook);
+        public ConditionValue evaluate(PlaceholderValueResolver resolver) {
+            ConditionValue value = right.evaluate(resolver);
             if (operator == Type.NOT) {
                 return ConditionValue.of(!value.asBoolean());
             }
@@ -62,27 +85,27 @@ public class PlaceholderConditionExpression {
 
     private record BinaryNode(Type operator, ExpressionNode left, ExpressionNode right) implements ExpressionNode {
         @Override
-        public ConditionValue evaluate(Player player, PlaceholderHook hook) {
+        public ConditionValue evaluate(PlaceholderValueResolver resolver) {
             return switch (operator) {
                 case AND -> ConditionValue.of(
-                        left.evaluate(player, hook).asBoolean() && right.evaluate(player, hook).asBoolean()
+                        left.evaluate(resolver).asBoolean() && right.evaluate(resolver).asBoolean()
                 );
                 case OR -> ConditionValue.of(
-                        left.evaluate(player, hook).asBoolean() || right.evaluate(player, hook).asBoolean()
+                        left.evaluate(resolver).asBoolean() || right.evaluate(resolver).asBoolean()
                 );
-                case EQUALS -> ConditionValue.of(compare(left, right, player, hook) == 0);
-                case NOT_EQUALS -> ConditionValue.of(compare(left, right, player, hook) != 0);
-                case GREATER -> ConditionValue.of(compare(left, right, player, hook) > 0);
-                case GREATER_EQUALS -> ConditionValue.of(compare(left, right, player, hook) >= 0);
-                case LESS -> ConditionValue.of(compare(left, right, player, hook) < 0);
-                case LESS_EQUALS -> ConditionValue.of(compare(left, right, player, hook) <= 0);
+                case EQUALS -> ConditionValue.of(compare(left, right, resolver) == 0);
+                case NOT_EQUALS -> ConditionValue.of(compare(left, right, resolver) != 0);
+                case GREATER -> ConditionValue.of(compare(left, right, resolver) > 0);
+                case GREATER_EQUALS -> ConditionValue.of(compare(left, right, resolver) >= 0);
+                case LESS -> ConditionValue.of(compare(left, right, resolver) < 0);
+                case LESS_EQUALS -> ConditionValue.of(compare(left, right, resolver) <= 0);
                 default -> throw new IllegalStateException("不支持的双目运算符: " + operator);
             };
         }
 
-        private int compare(ExpressionNode left, ExpressionNode right, Player player, PlaceholderHook hook) {
-            ConditionValue leftValue = left.evaluate(player, hook);
-            ConditionValue rightValue = right.evaluate(player, hook);
+        private int compare(ExpressionNode left, ExpressionNode right, PlaceholderValueResolver resolver) {
+            ConditionValue leftValue = left.evaluate(resolver);
+            ConditionValue rightValue = right.evaluate(resolver);
 
             Double leftNumber = leftValue.asNumber();
             Double rightNumber = rightValue.asNumber();

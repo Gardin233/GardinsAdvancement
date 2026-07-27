@@ -187,12 +187,14 @@ public class ContentLoader {
                 YamlLexicalParser.readColoredStringList(dataSection, "description")
         );
         List<String> conditions = YamlLexicalParser.readStringList(section, "conditions");
+        List<String> commands = YamlLexicalParser.readMultilineStringList(section, "commands");
         GLogger.debug("加载进度: " + tabId + ":" + advancementId
                 + " -> type=" + type
                 + ", parent=" + parentId
                 + ", conditions=" + conditions.size()
+                + ", commands=" + commands.size()
                 + ", title=" + advancementData.getTitle());
-        return new GAdvancement(tabId, parentId, advancementId, type, advancementData, conditions);
+        return new GAdvancement(tabId, parentId, advancementId, type, advancementData, conditions, commands);
     }
 
 }

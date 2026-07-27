@@ -8,6 +8,8 @@ tabs:
         type: root
         conditions:
           - "placeholder: %player_level% >= 0"
+        commands:
+          - "say %player_name% 已解锁 explorer_root"
         data:
           title: "探索开始"
           icon: CE:dwserveronly:copper_coin
@@ -23,6 +25,9 @@ tabs:
         parent: explorer_root
         conditions:
           - "placeholder: %player_level% >= 10"
+        commands: |
+          say %player_name% 已达成 explorer_step_one
+          give %player_name% minecraft:emerald 1
         data:
           title: "探索者 I"
           icon: minecraft:acacia_boat
@@ -38,6 +43,9 @@ tabs:
         parent: explorer_root
         conditions:
           - "placeholder: %player_level% >= 15 && %player_food_level% >= 16"
+        commands:
+          - "say %player_name% 已达成 explorer_step_two"
+          - "experience add %player_name% 10 levels"
         data:
           title: "探索者 II"
           icon: minecraft:acacia_door
