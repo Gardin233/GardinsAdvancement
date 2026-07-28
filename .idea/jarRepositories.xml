@@ -2,6 +2,11 @@
 <project version="4">
   <component name="RemoteRepositoriesConfiguration">
     <remote-repository>
+      <option name="id" value="placeholderapi" />
+      <option name="name" value="placeholderapi" />
+      <option name="url" value="https://repo.helpch.at/releases/" />
+    </remote-repository>
+    <remote-repository>
       <option name="id" value="fren_gor" />
       <option name="name" value="fren_gor" />
       <option name="url" value="https://nexus.frengor.com/repository/public/" />

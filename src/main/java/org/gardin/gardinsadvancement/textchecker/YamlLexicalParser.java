@@ -119,6 +119,27 @@ public final class YamlLexicalParser {
         return fallback;
     }
 
+    public static int readPositiveInteger(ConfigurationSection section, String path, int fallback, String source) {
+        if (section == null || !section.contains(path)) {
+            return fallback;
+        }
+        int rawValue = section.getInt(path, fallback);
+        if (rawValue > 0) {
+            return rawValue;
+        }
+        GLogger.warningLang("yaml.invalid_positive_integer", source, path, rawValue, fallback);
+        return fallback;
+    }
+
+    public static String readRequiredPlaceholder(ConfigurationSection section, String path, String source) {
+        String placeholder = readString(section, path, null);
+        if (placeholder == null) {
+            GLogger.warningLang("yaml.invalid_placeholder", source, path);
+            return null;
+        }
+        return placeholder;
+    }
+
     //成就类型解析器
     public static String parseAdvancementType(String rawType, String source) {
         String normalized = rawType == null ? "common" : rawType.trim().toLowerCase(Locale.ROOT);

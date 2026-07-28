@@ -5,6 +5,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.gardin.gardinsadvancement.advancementregister.AdvancementData;
 import org.gardin.gardinsadvancement.advancementregister.GAdvancement;
+import org.gardin.gardinsadvancement.advancementregister.AdvancementProgress;
 import org.gardin.gardinsadvancement.conf.Gconfig;
 import org.gardin.gardinsadvancement.tabcreater.Tab;
 import org.gardin.gardinsadvancement.tabcreater.TabDisplayMode;
@@ -186,6 +187,7 @@ public class ContentLoader {
                 YamlLexicalParser.parseColor(dataSection.getString("color"), location + ".data.color"),
                 YamlLexicalParser.readColoredStringList(dataSection, "description")
         );
+        AdvancementProgress progress = parseProgress(section.getConfigurationSection("progress"), location + ".progress");
         List<String> conditions = YamlLexicalParser.readStringList(section, "conditions");
         List<String> commands = YamlLexicalParser.readMultilineStringList(section, "commands");
         GLogger.debugLang(
@@ -193,11 +195,28 @@ public class ContentLoader {
                 tabId + ":" + advancementId,
                 type,
                 parentId,
+                progress == null ? "-" : progress.placeholder(),
+                progress == null ? 0 : progress.max(),
                 conditions.size(),
                 commands.size(),
                 advancementData.getTitle()
         );
-        return new GAdvancement(tabId, parentId, advancementId, type, advancementData, conditions, commands);
+        return new GAdvancement(tabId, parentId, advancementId, type, advancementData, progress, conditions, commands);
+    }
+
+    private AdvancementProgress parseProgress(ConfigurationSection progressSection, String source) {
+        if (progressSection == null) {
+            return null;
+        }
+        String placeholder = YamlLexicalParser.readRequiredPlaceholder(progressSection, "placeholder", source);
+        if (placeholder == null) {
+            return null;
+        }
+        int max = YamlLexicalParser.readPositiveInteger(progressSection, "max", -1, source);
+        if (max <= 0) {
+            return null;
+        }
+        return new AdvancementProgress(placeholder, max);
     }
 
 }

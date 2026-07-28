@@ -13,14 +13,17 @@ tabs:
           - "placeholder: %player_level% >= 0"
         commands:
           - "say %player_name% 已进入生存远征测试线"
+        progress:
+          placeholder: "%player_level%"
+          max: 20
         data:
           title: "&a生存远征"
           icon: minecraft:compass
           frame: task
           show_toast: true
           announce_chat: true
-          x: 0
-          y: 0
+          x: 1
+          y: 1
           description:
             - "&7复杂测试树的根节点"
             - "&7用于验证多层分支与命令执行"
@@ -32,6 +35,9 @@ tabs:
           - "placeholder: %player_level% >= 2"
         commands:
           - "tell %player_name% &a你已完成 gather_logs"
+        progress:
+          placeholder: "%player_level%"
+          max: 5
         data:
           title: "&6收集原木"
           icon: minecraft:oak_log
@@ -85,6 +91,9 @@ tabs:
           - "placeholder: %player_level% >= 8"
         commands:
           - "say %player_name% 已完成 smelt_iron"
+        progress:
+          placeholder: "%player_level%"
+          max: 12
         data:
           title: "&f冶炼铁锭"
           icon: minecraft:iron_ingot
@@ -101,6 +110,9 @@ tabs:
         parent: smelt_iron
         conditions:
           - "placeholder: %player_level% >= 12"
+        progress:
+          placeholder: "%ga_advancement_player_finished_count%"
+          max: 10
         data:
           title: "&8深入洞穴"
           icon: minecraft:lantern
@@ -135,6 +147,9 @@ tabs:
           - "placeholder: %player_level% >= 5"
         commands:
           - "tell %player_name% &e你已完成 harvest_wheat"
+        progress:
+          placeholder: "%player_level%"
+          max: 8
         data:
           title: "&e收获小麦"
           icon: minecraft:wheat
@@ -166,10 +181,13 @@ tabs:
         type: common
         parent: breed_animals
         conditions:
-          - "placeholder: %player_level% >= 10"
+          - "placeholder: %player_level% >= 20"
         commands: |
           say %player_name% 已完成 village_trade
           give %player_name% minecraft:emerald 3
+        progress:
+          placeholder: "%player_level%"
+          max: 15
         data:
           title: "&b村庄交易"
           icon: minecraft:emerald

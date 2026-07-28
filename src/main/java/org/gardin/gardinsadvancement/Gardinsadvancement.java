@@ -9,6 +9,7 @@ import org.gardin.gardinsadvancement.advancementregister.AdvancementRegister;
 import org.gardin.gardinsadvancement.commands.commandsRegister;
 import org.gardin.gardinsadvancement.conf.ConfRegister;
 import org.gardin.gardinsadvancement.conf.Gconfig;
+import org.gardin.gardinsadvancement.hook.GardinsAdvancementPlaceholderExpansion;
 import org.gardin.gardinsadvancement.service.PlaceholderConditionService;
 import org.gardin.gardinsadvancement.tabcreater.TabRegister;
 import org.gardin.gardinsadvancement.textchecker.ContentDocument;
@@ -25,6 +26,7 @@ public final class Gardinsadvancement extends JavaPlugin {
     private Gconfig gconfig;
     private PlaceholderConditionService placeholderConditionService;
     private commandsRegister commandsRegister;
+    private GardinsAdvancementPlaceholderExpansion placeholderExpansion;
     private BukkitTask startupTask;
     private boolean runtimeInitialized;
 
@@ -46,6 +48,7 @@ public final class Gardinsadvancement extends JavaPlugin {
         );
         this.commandsRegister = new commandsRegister(this);
         this.commandsRegister.init();
+        registerPlaceholderExpansion();
         scheduleRuntimeBootstrap();
     }
 
@@ -173,6 +176,35 @@ public final class Gardinsadvancement extends JavaPlugin {
         return placeholderConditionService.getManagedAdvancementKeys();
     }
 
+    public boolean isAdvancementFinished(Player player, String advancementKey) {
+        if (player == null || advancementRegister == null || advancementKey == null || advancementKey.isBlank()) {
+            return false;
+        }
+        var advancement = advancementRegister.findRegisteredAdvancement(advancementKey);
+        return advancement != null && advancement.isGranted(player);
+    }
+
+    public int getAdvancementCount(String namespace) {
+        if (advancementRegister == null) {
+            return 0;
+        }
+        return advancementRegister.countRegisteredAdvancements(namespace);
+    }
+
+    public int getAllAdvancementCount() {
+        if (advancementRegister == null) {
+            return 0;
+        }
+        return advancementRegister.countRegisteredAdvancements();
+    }
+
+    public int getPlayerFinishedAdvancementCount(Player player) {
+        if (advancementRegister == null) {
+            return 0;
+        }
+        return advancementRegister.countFinishedAdvancements(player);
+    }
+
     public void syncPlayerAdvancementCache(Player player) {
         if (placeholderConditionService == null) {
             GLogger.warningLang("plugin.runtime_unavailable");
@@ -188,9 +220,25 @@ public final class Gardinsadvancement extends JavaPlugin {
             startupTask.cancel();
             startupTask = null;
         }
+        if (placeholderExpansion != null && placeholderExpansion.isRegistered()) {
+            placeholderExpansion.unregister();
+            placeholderExpansion = null;
+        }
         if (placeholderConditionService != null) {
             placeholderConditionService.stop();
         }
         GLogger.infoLang("plugin.disable.complete");
+    }
+
+    private void registerPlaceholderExpansion() {
+        if (this.placeholderExpansion != null && this.placeholderExpansion.isRegistered()) {
+            return;
+        }
+        this.placeholderExpansion = new GardinsAdvancementPlaceholderExpansion(this);
+        if (this.placeholderExpansion.register()) {
+            GLogger.infoLang("hook.placeholder.expansion_registered");
+            return;
+        }
+        GLogger.warningLang("hook.placeholder.expansion_register_failed");
     }
 }

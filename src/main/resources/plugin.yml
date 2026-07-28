@@ -9,11 +9,14 @@ commands:
   gardinsadvancement:
     aliases: [ga]
     description: GardinsAdvancement 主命令
-    usage: /<command> reload|grant <player> <namespace:name|all>|revoke <player> <namespace:name|all>
+    usage: /<command> reload|grant <player> <namespace:name|all>|revoke <player> <namespace:name|all>|placeholder
 permissions:
   gardinsadvancement.reload:
     description: 允许重载 GardinsAdvancement 设置
     default: op
   gardinsadvancement.manage:
     description: 允许手动给予或移除玩家进度
+    default: op
+  gardinsadvancement.placeholder:
+    description: 允许查看 GardinsAdvancement 提供的 PlaceholderAPI 字段
     default: op

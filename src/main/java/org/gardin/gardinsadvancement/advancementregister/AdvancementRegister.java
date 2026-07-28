@@ -150,22 +150,78 @@ public class AdvancementRegister {
                 ? gconfig.getDefaultTabBackground()
                 : tabMeta.getBackgroundTexture();
         GLogger.debugLang("advancement.root_created", tab.getNamespace(), gAdv.getId(), background);
+        AdvancementProgress progress = gAdv.getProgress();
+        if (progress == null) {
+            return new RootAdvancement(
+                    tab,
+                    gAdv.getId(),
+                    ad,
+                    background
+            );
+        }
+        GLogger.debugLang("advancement.progress_enabled", buildKey(gAdv.getTab(), gAdv.getId()), progress.placeholder(), progress.max());
         return new RootAdvancement(
                 tab,
                 gAdv.getId(),
                 ad,
-                background
+                background,
+                progress.getDisplayMaxProgression()
         );
     }
 
     public BaseAdvancement createAdvancement(GAdvancement gAdv, Advancement parent) {
         AdvancementDisplay display = gAdv.getData().createDisplay();
         GLogger.debugLang("advancement.base_created", gAdv.getId(), gAdv.getParentId(), gAdv.getTab());
-        return new BaseAdvancement(gAdv.getId(), display, parent);
+        AdvancementProgress progress = gAdv.getProgress();
+        if (progress == null) {
+            return new BaseAdvancement(gAdv.getId(), display, parent);
+        }
+        GLogger.debugLang("advancement.progress_enabled", buildKey(gAdv.getTab(), gAdv.getId()), progress.placeholder(), progress.max());
+        return new BaseAdvancement(gAdv.getId(), display, parent, progress.getDisplayMaxProgression());
     }
 
     public Map<String, Advancement> getRegisteredAdvancements() {
         return Map.copyOf(advancements);
+    }
+
+    public Advancement findRegisteredAdvancement(String advancementKey) {
+        if (advancementKey == null || advancementKey.isBlank()) {
+            return null;
+        }
+        return advancements.get(advancementKey.trim());
+    }
+
+    public int countRegisteredAdvancements() {
+        return advancements.size();
+    }
+
+    public int countRegisteredAdvancements(String namespace) {
+        if (namespace == null || namespace.isBlank()) {
+            return 0;
+        }
+        String normalized = namespace.trim();
+        int count = 0;
+        for (String key : advancements.keySet()) {
+            if (key.regionMatches(true, 0, normalized, 0, normalized.length())
+                    && key.length() > normalized.length()
+                    && key.charAt(normalized.length()) == ':') {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public int countFinishedAdvancements(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        int count = 0;
+        for (Advancement advancement : advancements.values()) {
+            if (advancement.isGranted(player)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private void configureTabDisplay(AdvancementTab tab, Tab tabMeta, RootAdvancement rootAdvancement) {

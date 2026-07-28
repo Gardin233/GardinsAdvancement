@@ -6,6 +6,7 @@ import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
+import org.gardin.gardinsadvancement.advancementregister.AdvancementProgress;
 import org.gardin.gardinsadvancement.advancementregister.AdvancementRegister;
 import org.gardin.gardinsadvancement.advancementregister.GAdvancement;
 import org.gardin.gardinsadvancement.condition.PlaceholderConditionExpression;
@@ -25,10 +26,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 public class PlaceholderConditionService {
     public static final String ALL_ADVANCEMENTS_KEY = "all";
     private static final String PREFIX = "placeholder:";
+    private static final Pattern INTEGER_PATTERN = Pattern.compile("^[+-]?\\d+$");
 
     private final JavaPlugin plugin;
     private Gconfig gconfig;
@@ -70,8 +73,8 @@ public class PlaceholderConditionService {
             GLogger.warningLang("service.placeholder_api_missing");
             return;
         }
-        if (trackedAdvancementOrder.isEmpty()) {
-            GLogger.warningLang("service.no_tracked_conditions");
+        if (trackedAdvancementOrder.isEmpty() || placeholderRegistrations.isEmpty()) {
+            GLogger.warningLang("service.no_tracked_advancements");
             return;
         }
         long interval = gconfig.getPlaceholderCheckIntervalTicks();
@@ -117,7 +120,6 @@ public class PlaceholderConditionService {
         if (player == null || managedAdvancement == null) {
             return false;
         }
-        ensureParentPathGranted(player, managedAdvancement);
         Advancement advancement = managedAdvancement.advancement();
         if (advancement.isGranted(player)) {
             syncPlayerState(player);
@@ -222,6 +224,7 @@ public class PlaceholderConditionService {
         }
         PlayerPlaceholderState state = createPlayerState(player);
         playerStates.put(player.getUniqueId(), state);
+        refreshVisibleProgress(player, state);
         GLogger.debugLang(
                 "service.player_state_synchronized",
                 player.getName(),
@@ -269,13 +272,21 @@ public class PlaceholderConditionService {
                 releaseAdvancementDependencies(player, state, trackedAdvancement);
                 continue;
             }
+            if (trackedAdvancement.progress() != null && changedPlaceholders.contains(trackedAdvancement.progress().placeholder())) {
+                updateVisibleProgress(player, trackedAdvancement, state);
+                if (advancement.isGranted(player)) {
+                    finalizeGrantedAdvancement(player, state, trackedAdvancement, true);
+                    continue;
+                }
+            }
+            if (!trackedAdvancement.hasCompletionConditions()) {
+                continue;
+            }
             GLogger.debugLang("service.evaluating", player.getName(), trackedAdvancement.key());
             if (trackedAdvancement.matches(state::getCurrentValue)) {
                 advancement.grant(player);
                 if (advancement.isGranted(player)) {
-                    GLogger.debugLang("service.player_granted", player.getName(), trackedAdvancement.key());
-                    releaseAdvancementDependencies(player, state, trackedAdvancement);
-                    executeCommands(player, trackedAdvancement.key(), trackedAdvancement.commands());
+                    finalizeGrantedAdvancement(player, state, trackedAdvancement, false);
                 }
             }
         }
@@ -300,8 +311,11 @@ public class PlaceholderConditionService {
         for (GAdvancement definition : orderedDefinitions) {
             String key = buildKey(definition);
             List<PlaceholderConditionExpression> expressions = new ArrayList<>();
+            Set<String> conditionPlaceholders = new LinkedHashSet<>();
             Set<String> placeholders = new LinkedHashSet<>();
+            AdvancementProgress progress = definition.getProgress();
             boolean hasUnsupportedCondition = false;
+            boolean hasParseFailure = false;
 
             for (String rawCondition : definition.getCondition()) {
                 String expressionSource = unwrapPlaceholderExpression(rawCondition);
@@ -312,22 +326,38 @@ public class PlaceholderConditionService {
                 try {
                     PlaceholderConditionExpression expression = PlaceholderConditionExpression.compile(expressionSource);
                     expressions.add(expression);
-                    placeholders.addAll(expression.getPlaceholders());
+                    conditionPlaceholders.addAll(expression.getPlaceholders());
                     GLogger.debugLang("service.condition_compiled", key, expressionSource);
                 } catch (IllegalArgumentException exception) {
                     GLogger.errorLang("service.condition_parse_failed", key, exception.getMessage());
-                    hasUnsupportedCondition = true;
+                    hasParseFailure = true;
                     break;
                 }
             }
 
-            if (expressions.isEmpty()) {
+            placeholders.addAll(conditionPlaceholders);
+            if (progress != null) {
+                placeholders.add(progress.placeholder());
+            }
+
+            if (expressions.isEmpty() && progress == null) {
                 GLogger.warningLang("service.no_valid_expressions", key);
                 continue;
             }
+            if (hasParseFailure) {
+                if (progress == null) {
+                    continue;
+                }
+                GLogger.warningLang("service.progress_only_after_condition_failure", key);
+            }
             if (hasUnsupportedCondition) {
                 GLogger.warningLang("service.unsupported_condition", key);
-                continue;
+                if (progress == null) {
+                    continue;
+                }
+            }
+            if (expressions.isEmpty() && progress != null) {
+                GLogger.debugLang("service.progress_only_tracking", key, progress.placeholder(), progress.max());
             }
             if (placeholders.isEmpty()) {
                 GLogger.warningLang("service.no_placeholder_dependency", key);
@@ -344,6 +374,8 @@ public class PlaceholderConditionService {
                     advancement,
                     List.copyOf(expressions),
                     List.copyOf(definition.getCommands()),
+                    progress,
+                    Set.copyOf(conditionPlaceholders),
                     Set.copyOf(placeholders),
                     order++
             );
@@ -406,6 +438,7 @@ public class PlaceholderConditionService {
                             key,
                             advancement,
                             List.copyOf(definition.getCommands()),
+                            definition.getProgress(),
                             parentKey
                     )
             );
@@ -423,31 +456,6 @@ public class PlaceholderConditionService {
             GLogger.warningLang("service.manual_advancement_missing", normalized);
         }
         return managedAdvancement;
-    }
-
-    private void ensureParentPathGranted(Player player, ManagedAdvancement managedAdvancement) {
-        List<ManagedAdvancement> ancestors = new ArrayList<>();
-        String currentKey = managedAdvancement.parentKey();
-        while (currentKey != null) {
-            ManagedAdvancement parent = managedAdvancements.get(currentKey);
-            if (parent == null) {
-                break;
-            }
-            ancestors.add(parent);
-            currentKey = parent.parentKey();
-        }
-        ancestors.sort(Comparator.comparingInt(ancestor -> depthOf(ancestor.key())));
-        for (ManagedAdvancement ancestor : ancestors) {
-            if (ancestor.advancement().isGranted(player)) {
-                continue;
-            }
-            ancestor.advancement().grant(player);
-            if (ancestor.advancement().isGranted(player)) {
-                GLogger.debugLang("service.parent_auto_granted", player.getName(), ancestor.key(), managedAdvancement.key());
-            } else {
-                GLogger.warningLang("service.parent_auto_grant_failed", player.getName(), ancestor.key(), managedAdvancement.key());
-            }
-        }
     }
 
     private int depthOf(String advancementKey) {
@@ -525,6 +533,96 @@ public class PlaceholderConditionService {
         return result;
     }
 
+    private void refreshVisibleProgress(Player player, PlayerPlaceholderState state) {
+        if (!placeholderHook.isAvailable() || state.isFullyCompleted()) {
+            return;
+        }
+        updatePlaceholderCaches(player, state);
+        for (TrackedAdvancement trackedAdvancement : trackedAdvancementOrder) {
+            if (!state.isAdvancementActive(trackedAdvancement.key())) {
+                continue;
+            }
+            if (trackedAdvancement.progress() == null) {
+                continue;
+            }
+            updateVisibleProgress(player, trackedAdvancement, state);
+            if (trackedAdvancement.advancement().isGranted(player)) {
+                finalizeGrantedAdvancement(player, state, trackedAdvancement, true);
+            }
+        }
+    }
+
+    private void updateVisibleProgress(Player player, TrackedAdvancement trackedAdvancement, PlayerPlaceholderState state) {
+        AdvancementProgress progress = trackedAdvancement.progress();
+        if (progress == null) {
+            return;
+        }
+        Advancement advancement = trackedAdvancement.advancement();
+        if (advancement.isGranted(player)) {
+            return;
+        }
+        int nextProgress = parseDisplayedProgress(
+                player,
+                trackedAdvancement.key(),
+                progress,
+                state.getCurrentValue(progress.placeholder())
+        );
+        int currentProgress = advancement.getProgression(player);
+        if (currentProgress == nextProgress) {
+            return;
+        }
+        advancement.setProgression(player, nextProgress, false);
+        GLogger.debugLang("service.progress_updated", player.getName(), trackedAdvancement.key(), nextProgress, progress.max());
+    }
+
+    private void finalizeGrantedAdvancement(
+            Player player,
+            PlayerPlaceholderState state,
+            TrackedAdvancement trackedAdvancement,
+            boolean byProgress
+    ) {
+        if (byProgress) {
+            GLogger.debugLang("service.player_granted_by_progress", player.getName(), trackedAdvancement.key());
+        } else {
+            GLogger.debugLang("service.player_granted", player.getName(), trackedAdvancement.key());
+        }
+        releaseAdvancementDependencies(player, state, trackedAdvancement);
+        executeCommands(player, trackedAdvancement.key(), trackedAdvancement.commands());
+    }
+
+    private int parseDisplayedProgress(Player player, String advancementKey, AdvancementProgress progress, String rawValue) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return 0;
+        }
+        String normalized = rawValue.trim();
+        if (INTEGER_PATTERN.matcher(normalized).matches()) {
+            try {
+                return clampProgress(Integer.parseInt(normalized), progress.max());
+            } catch (NumberFormatException exception) {
+                GLogger.warningLang("service.progress_invalid_number", player.getName(), advancementKey, progress.placeholder(), rawValue);
+                return 0;
+            }
+        }
+        try {
+            double decimal = Double.parseDouble(normalized);
+            if (!Double.isFinite(decimal)) {
+                GLogger.warningLang("service.progress_invalid_number", player.getName(), advancementKey, progress.placeholder(), rawValue);
+                return 0;
+            }
+            return clampProgress((int) Math.floor(decimal), progress.max());
+        } catch (NumberFormatException exception) {
+            GLogger.warningLang("service.progress_invalid_number", player.getName(), advancementKey, progress.placeholder(), rawValue);
+            return 0;
+        }
+    }
+
+    private int clampProgress(int value, int max) {
+        if (value <= 0) {
+            return 0;
+        }
+        return Math.min(value, max);
+    }
+
     private void releaseAdvancementDependencies(Player player, PlayerPlaceholderState state, TrackedAdvancement trackedAdvancement) {
         if (!state.deactivateAdvancement(trackedAdvancement.key())) {
             return;
@@ -599,6 +697,7 @@ public class PlaceholderConditionService {
             String key,
             Advancement advancement,
             List<String> commands,
+            AdvancementProgress progress,
             String parentKey
     ) {
     }
@@ -608,9 +707,15 @@ public class PlaceholderConditionService {
             Advancement advancement,
             List<PlaceholderConditionExpression> expressions,
             List<String> commands,
+            AdvancementProgress progress,
+            Set<String> conditionPlaceholders,
             Set<String> placeholders,
             int order
     ) {
+        boolean hasCompletionConditions() {
+            return !expressions.isEmpty();
+        }
+
         boolean matches(PlaceholderConditionExpression.PlaceholderValueResolver resolver) {
             for (PlaceholderConditionExpression expression : expressions) {
                 if (!expression.test(resolver)) {

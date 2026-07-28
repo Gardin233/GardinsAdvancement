@@ -7,6 +7,7 @@ public class GAdvancement {
     private final String parentId;
     private final String id;
     private final AdvancementData data;
+    private final AdvancementProgress progress;
     private final String type;
     private final List<String> condition;
     private final List<String> commands;
@@ -17,6 +18,7 @@ public class GAdvancement {
             String id,
             String type,
             AdvancementData data,
+            AdvancementProgress progress,
             List<String> condition,
             List<String> commands
     ) {
@@ -24,6 +26,7 @@ public class GAdvancement {
         this.parentId = parentId;
         this.id = id;
         this.type = type;
+        this.progress = progress;
         this.condition = List.copyOf(condition);
         this.commands = List.copyOf(commands);
         this.data = data;
@@ -59,6 +62,10 @@ public class GAdvancement {
 
     public AdvancementData getData() {
         return data;
+    }
+
+    public AdvancementProgress getProgress() {
+        return progress;
     }
 
 }

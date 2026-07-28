@@ -20,6 +20,7 @@ import java.util.Locale;
 public class commandsRegister implements CommandExecutor, TabCompleter {
     private static final String RELOAD_PERMISSION = "gardinsadvancement.reload";
     private static final String MANAGE_PERMISSION = "gardinsadvancement.manage";
+    private static final String PLACEHOLDER_PERMISSION = "gardinsadvancement.placeholder";
     private final Gardinsadvancement plugin;
 
     public commandsRegister(Gardinsadvancement plugin) {
@@ -33,7 +34,7 @@ public class commandsRegister implements CommandExecutor, TabCompleter {
         }
         plugin.getCommand("gardinsadvancement").setExecutor(this);
         plugin.getCommand("gardinsadvancement").setTabCompleter(this);
-        GLogger.infoLang("commands.registered", "/gardinsadvancement reload|grant|revoke");
+        GLogger.infoLang("commands.registered", "/gardinsadvancement reload|grant|revoke|placeholder");
     }
 
     @Override
@@ -51,6 +52,7 @@ public class commandsRegister implements CommandExecutor, TabCompleter {
             case "reload" -> handleReload(sender);
             case "grant" -> handleGrant(sender, label, args);
             case "revoke" -> handleRevoke(sender, label, args);
+            case "placeholder" -> handlePlaceholder(sender, label, args);
             default -> {
                 Lang.send(sender, "commands.unknown_subcommand", args[0]);
                 sendUsage(sender, label);
@@ -67,7 +69,7 @@ public class commandsRegister implements CommandExecutor, TabCompleter {
             @NotNull String[] args
     ) {
         if (args.length == 1) {
-            return filterPrefix(List.of("reload", "grant", "revoke"), args[0]);
+            return filterPrefix(List.of("reload", "grant", "revoke", "placeholder"), args[0]);
         }
         if (args.length == 2 && isManageSubcommand(args[0])) {
             return filterPrefix(getOnlinePlayerNames(), args[1]);
@@ -140,11 +142,29 @@ public class commandsRegister implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handlePlaceholder(CommandSender sender, String label, String[] args) {
+        if (!sender.hasPermission(PLACEHOLDER_PERMISSION)) {
+            Lang.send(sender, "commands.no_permission");
+            return true;
+        }
+        if (args.length > 1) {
+            Lang.send(sender, "commands.placeholder_usage", label);
+            return true;
+        }
+        Lang.send(sender, "commands.placeholder_header");
+        Lang.send(sender, "commands.placeholder_item_finished");
+        Lang.send(sender, "commands.placeholder_item_count");
+        Lang.send(sender, "commands.placeholder_item_all_count");
+        Lang.send(sender, "commands.placeholder_item_player_finished_count");
+        return true;
+    }
+
     private void sendUsage(CommandSender sender, String label) {
         Lang.send(sender, "commands.usage", label);
         Lang.send(sender, "commands.reload_usage", label);
         Lang.send(sender, "commands.grant_usage", label);
         Lang.send(sender, "commands.revoke_usage", label);
+        Lang.send(sender, "commands.placeholder_usage", label);
     }
 
     private boolean isManageSubcommand(String input) {
