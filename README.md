@@ -38,6 +38,21 @@ Gardin's Advancement 使用 PlaceholderAPI 作为统一数据接口。
 只有两个条件同时满足，玩家才会获得对应的成就。
 由于采用了这种设计，理论上任何支持 PlaceholderAPI 的插件都可以直接成为成就条件来源。
 
+我们还支持对进度条的支持，目前仅支持一个变量
+```yml
+progress:
+  placeholder: '%%player_level%%'
+  max: 10
+```
+这意味着显示成就进度条，当玩家等级达到10级时，成就会被完成。
+
+请注意:受限于原版仅支持int类型数据
+若您的placeholder传入非数值数据则永远被标记为0，若您传入浮点数则会被强行向下取整
+
+这两种方式可以共存，也可以独立存在。
+
+
+
 对于复杂逻辑，可以结合 PlaceholderAPI 的 JS 扩展或其他脚本插件进行封装。
 
 我们支持如下表达式:
@@ -67,7 +82,7 @@ tabs:
         commands:
             - "say %player_name% 已解锁根成就 novice_root"
             - "tell %player_name% &a欢迎来到新手之路"
-        data: #minecraft每个标签页下仅支持一个根进度，并且以根进度作为页面标题，以根进度icon作为标签页icon
+        data: 
           title: "初入世界"
           icon: minecraft:acacia_door
           frame: task
@@ -80,8 +95,9 @@ tabs:
       novice_step_one:
         type: common
         parent: novice_root
-        conditions:
-          - "placeholder: %player_level% >= 5"
+        progress:
+          placeholder: '%%player_level%%'
+          max: 10
         data:
           title: "迈出第一步"
           icon: CE:customfishing:sturgeon_fish_golden_star
