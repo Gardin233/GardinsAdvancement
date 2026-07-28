@@ -113,7 +113,7 @@ public final class YamlLexicalParser {
         if (normalized.equals("root") || normalized.equals("common")) {
             return normalized;
         }
-        GLogger.warning(source + " 的 type=" + rawType + " 非法，已回退为 common");
+        GLogger.warningLang("yaml.invalid_type", source, rawType);
         return "common";
     }
     //Frame解析器
@@ -125,7 +125,7 @@ public final class YamlLexicalParser {
         try {
             return AdvancementFrameType.valueOf(normalized);
         } catch (IllegalArgumentException ex) {
-            GLogger.warning(source + " 的 frame=" + rawType + " 非法，已回退为 TASK");
+            GLogger.warningLang("yaml.invalid_frame", source, rawType);
             return AdvancementFrameType.TASK;
         }
     }
@@ -147,7 +147,7 @@ public final class YamlLexicalParser {
             }
             return ChatColor.of(normalized.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            GLogger.warning(source + " 的 color=" + rawColor + " 非法，已忽略");
+            GLogger.warningLang("yaml.invalid_color", source, rawColor);
             return null;
         }
     }
@@ -165,7 +165,7 @@ public final class YamlLexicalParser {
             material = Material.matchMaterial(candidate.toUpperCase(Locale.ROOT));
         }
         if (material == null) {
-            GLogger.warning(source + " 的材质=" + rawMaterial + " 无法识别，已回退为 " + fallback);
+            GLogger.warningLang("yaml.invalid_material", source, rawMaterial, fallback);
             return fallback;
         }
         return material;
@@ -181,7 +181,7 @@ public final class YamlLexicalParser {
             if (craftEngineItem != null) {
                 return craftEngineItem;
             }
-            GLogger.warning(source + " 的 CE 图标=" + icon + " 当前未能解析，已回退为 " + fallback);
+            GLogger.warningLang("yaml.ce_icon_fallback", source, icon, fallback);
             return new ItemStack(fallback);
         }
         return new ItemStack(parseMaterial(icon, fallback, source));

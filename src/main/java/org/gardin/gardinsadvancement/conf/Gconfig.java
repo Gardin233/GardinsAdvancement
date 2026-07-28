@@ -3,6 +3,7 @@ package org.gardin.gardinsadvancement.conf;
 import org.bukkit.Material;
 
 public class Gconfig {
+    private final String language;
     private final boolean debug;
     private final String contentFolder;
     private final boolean copyExampleContent;
@@ -12,6 +13,7 @@ public class Gconfig {
     private final long startupDelayTicks;
 
     public Gconfig(
+            String language,
             boolean debug,
             String contentFolder,
             boolean copyExampleContent,
@@ -20,6 +22,7 @@ public class Gconfig {
             long placeholderCheckIntervalTicks,
             long startupDelayTicks
     ) {
+        this.language = language;
         this.debug = debug;
         this.contentFolder = contentFolder;
         this.copyExampleContent = copyExampleContent;
@@ -27,6 +30,10 @@ public class Gconfig {
         this.fallbackIcon = fallbackIcon;
         this.placeholderCheckIntervalTicks = placeholderCheckIntervalTicks;
         this.startupDelayTicks = startupDelayTicks;
+    }
+
+    public String getLanguage() {
+        return language;
     }
 
     public boolean isDebug() {

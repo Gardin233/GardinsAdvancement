@@ -4,6 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.gardin.gardinsadvancement.conf.Gconfig;
+import org.gardin.gardinsadvancement.util.Lang;
 
 public class ConfLoader {
     private static final String DEFAULT_BACKGROUND =
@@ -39,6 +40,7 @@ public class ConfLoader {
                 config.getLong("startup-delay-ticks", 60L)
         );
         return new Gconfig(
+                YamlLexicalParser.readString(config, "language", "zh_cn"),
                 debug,
                 contentFolder,
                 copyExampleContent,
@@ -52,6 +54,13 @@ public class ConfLoader {
     public Gconfig init() {
         plugin.saveDefaultConfig();
         plugin.reloadConfig();
+        Lang.initialize(plugin, plugin.getConfig().getString("language", "zh_cn"));
         return load();
+    }
+
+    public String readLanguage() {
+        plugin.saveDefaultConfig();
+        plugin.reloadConfig();
+        return plugin.getConfig().getString("language", "zh_cn");
     }
 }

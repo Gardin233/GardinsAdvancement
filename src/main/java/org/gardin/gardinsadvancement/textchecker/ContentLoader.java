@@ -28,14 +28,14 @@ public class ContentLoader {
 
     public ContentDocument init() {
         File folder = prepareContentFolder();
-        GLogger.info("&f开始扫描内容目录: " + folder.getAbsolutePath());
+        GLogger.infoLang("content.scan_start", folder.getAbsolutePath());
         List<Tab> tabs = new ArrayList<>();
         List<GAdvancement> advancements = new ArrayList<>();
         Set<String> knownTabs = new HashSet<>();
         Set<String> knownAdvancements = new HashSet<>();
         List<String> files = loadFiles(folder, tabs, advancements, knownTabs, knownAdvancements);
-        GLogger.info("&f内容目录扫描完成，共读取 " + files.size() + " 个 yml 文件");
-        GLogger.debug("已加载文件: " + files);
+        GLogger.infoLang("content.scan_complete", files.size());
+        GLogger.debugLang("content.loaded_files", files);
         return new ContentDocument(tabs, advancements);
     }
 
@@ -54,12 +54,12 @@ public class ContentLoader {
                 file -> file.getName().endsWith(".yml")
         );
         if (ymlFiles == null) {
-            GLogger.warning("内容目录无法读取: " + folder.getAbsolutePath());
+            GLogger.warningLang("content.folder_unreadable", folder.getAbsolutePath());
             return files;
         }
-        GLogger.debug("检测到 " + ymlFiles.length + " 个候选内容文件");
+        GLogger.debugLang("content.candidate_count", ymlFiles.length);
         for (File file : ymlFiles) {
-            GLogger.info("&f读取内容文件: " + file.getName());
+            GLogger.infoLang("content.file_read", file.getName());
             YamlConfiguration yaml =
                     YamlConfiguration.loadConfiguration(file);
             parse(yaml, file.getName(), tabs, advancements, knownTabs, knownAdvancements);
@@ -72,13 +72,13 @@ public class ContentLoader {
         File folder = new File(plugin.getDataFolder(), gconfig.getContentFolder());
         if (!folder.exists()) {
             folder.mkdirs();
-            GLogger.info("&f内容目录不存在，已创建: " + folder.getAbsolutePath());
+            GLogger.infoLang("content.folder_created", folder.getAbsolutePath());
         }
         if (gconfig.isCopyExampleContent() && "content".equals(gconfig.getContentFolder())) {
             File exampleFile = new File(folder, "example.yml");
             if (!exampleFile.exists()) {
                 plugin.saveResource("content/example.yml", false);
-                GLogger.info("&f已复制示例内容文件: " + exampleFile.getName());
+                GLogger.infoLang("content.example_copied", exampleFile.getName());
             }
         }
         return folder;
@@ -94,22 +94,22 @@ public class ContentLoader {
     ) {
         ConfigurationSection section = yaml.getConfigurationSection("tabs");
         if (section == null) {
-            GLogger.warning(source + " 缺少 tabs 根节点，已跳过");
+            GLogger.warningLang("content.missing_tabs_root", source);
             return;
         }
         for (String tabId : section.getKeys(false)) {
             ConfigurationSection tabSection = section.getConfigurationSection(tabId);
             if (tabSection == null) {
-                GLogger.warning(source + " 的 tabs." + tabId + " 不是有效节点，已跳过");
+                GLogger.warningLang("content.invalid_tab_section", source, tabId);
                 continue;
             }
             if (!knownTabs.add(tabId)) {
-                GLogger.warning(source + " 中发现重复 Tab: " + tabId + "，后者已跳过");
+                GLogger.warningLang("content.duplicate_tab", source, tabId);
                 continue;
             }
             Tab tab = parseTab(tabId, tabSection);
             tabs.add(tab);
-            GLogger.info("&f已解析 Tab: " + tabId + "，display-mode=" + tab.getDisplayMode().name().toLowerCase());
+            GLogger.infoLang("content.parsed_tab", tabId, tab.getDisplayMode().name().toLowerCase());
             parseAdvancements(source, tabId, tabSection, advancements, knownAdvancements);
         }
     }
@@ -136,18 +136,18 @@ public class ContentLoader {
     ) {
         ConfigurationSection advancementSection = tabSection.getConfigurationSection("advancements");
         if (advancementSection == null) {
-            GLogger.warning(source + " 的 tabs." + tabId + " 缺少 advancements 节点");
+            GLogger.warningLang("content.missing_advancements", source, tabId);
             return;
         }
         for (String advancementId : advancementSection.getKeys(false)) {
             ConfigurationSection section = advancementSection.getConfigurationSection(advancementId);
             if (section == null) {
-                GLogger.warning(source + " 的 " + tabId + "." + advancementId + " 不是有效节点，已跳过");
+                GLogger.warningLang("content.invalid_advancement_section", source, tabId, advancementId);
                 continue;
             }
             String uniqueKey = tabId + ":" + advancementId;
             if (!knownAdvancements.add(uniqueKey)) {
-                GLogger.warning(source + " 中发现重复进度: " + uniqueKey + "，后者已跳过");
+                GLogger.warningLang("content.duplicate_advancement", source, uniqueKey);
                 continue;
             }
             advancements.add(parseAdvancement(tabId, advancementId, section, source));
@@ -188,12 +188,15 @@ public class ContentLoader {
         );
         List<String> conditions = YamlLexicalParser.readStringList(section, "conditions");
         List<String> commands = YamlLexicalParser.readMultilineStringList(section, "commands");
-        GLogger.debug("加载进度: " + tabId + ":" + advancementId
-                + " -> type=" + type
-                + ", parent=" + parentId
-                + ", conditions=" + conditions.size()
-                + ", commands=" + commands.size()
-                + ", title=" + advancementData.getTitle());
+        GLogger.debugLang(
+                "content.advancement_loaded",
+                tabId + ":" + advancementId,
+                type,
+                parentId,
+                conditions.size(),
+                commands.size(),
+                advancementData.getTitle()
+        );
         return new GAdvancement(tabId, parentId, advancementId, type, advancementData, conditions, commands);
     }
 

@@ -1,16 +1,19 @@
 name: Gardinsadvancement
-version: '0.2.0'
+version: '0.3.0'
 main: org.gardin.gardinsadvancement.Gardinsadvancement
 api-version: '1.21'
 load: POSTWORLD
-depend: [PlaceholderAPI]
+depend: [PlaceholderAPI,UltimateAdvancementAPI]
 softdepend: [CraftEngine]
 commands:
   gardinsadvancement:
     aliases: [ga]
     description: GardinsAdvancement 主命令
-    usage: /<command> reload
+    usage: /<command> reload|grant <player> <namespace:name|all>|revoke <player> <namespace:name|all>
 permissions:
   gardinsadvancement.reload:
     description: 允许重载 GardinsAdvancement 设置
+    default: op
+  gardinsadvancement.manage:
+    description: 允许手动给予或移除玩家进度
     default: op

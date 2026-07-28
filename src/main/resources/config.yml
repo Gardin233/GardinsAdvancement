@@ -3,6 +3,7 @@
 # 20 ticks = 1 秒
 #
 
+language: zh_cn
 debug: true
 content-folder: content
 copy-example-content: true

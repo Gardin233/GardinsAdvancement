@@ -18,7 +18,7 @@ public class PlaceholderHook {
         if (placeholderApiPlugin == null || !placeholderApiPlugin.isEnabled()) {
             this.available = false;
             this.parseMethod = null;
-            GLogger.debug("PlaceholderAPI 未挂载，placeholder 条件功能保持关闭");
+            GLogger.debugLang("hook.placeholder.unavailable");
             return;
         }
 
@@ -28,9 +28,9 @@ public class PlaceholderHook {
             Class<?> placeholderApiClass = Class.forName("me.clip.placeholderapi.PlaceholderAPI");
             method = placeholderApiClass.getMethod("setPlaceholders", Player.class, String.class);
             loaded = true;
-            GLogger.info("&f已挂载 PlaceholderAPI 条件解析支持");
+            GLogger.infoLang("hook.placeholder.attached");
         } catch (ReflectiveOperationException exception) {
-            GLogger.warning("检测到 PlaceholderAPI，但加载解析方法失败，将禁用 placeholder 条件");
+            GLogger.warningLang("hook.placeholder.attach_failed");
         }
         this.available = loaded;
         this.parseMethod = method;
@@ -55,7 +55,7 @@ public class PlaceholderHook {
             }
             return trimmed;
         } catch (ReflectiveOperationException exception) {
-            GLogger.warning("解析 placeholder 失败: " + placeholder);
+            GLogger.warningLang("hook.placeholder.resolve_failed", placeholder);
             return null;
         }
     }

@@ -2,6 +2,7 @@ package org.gardin.gardinsadvancement.condition;
 
 import org.bukkit.entity.Player;
 import org.gardin.gardinsadvancement.hook.PlaceholderHook;
+import org.gardin.gardinsadvancement.util.Lang;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -79,7 +80,7 @@ public class PlaceholderConditionExpression {
             if (operator == Type.NOT) {
                 return ConditionValue.of(!value.asBoolean());
             }
-            throw new IllegalStateException("不支持的单目运算符: " + operator);
+            throw new IllegalStateException(Lang.text("expr.parser.unsupported_unary", operator));
         }
     }
 
@@ -99,7 +100,7 @@ public class PlaceholderConditionExpression {
                 case GREATER_EQUALS -> ConditionValue.of(compare(left, right, resolver) >= 0);
                 case LESS -> ConditionValue.of(compare(left, right, resolver) < 0);
                 case LESS_EQUALS -> ConditionValue.of(compare(left, right, resolver) <= 0);
-                default -> throw new IllegalStateException("不支持的双目运算符: " + operator);
+                default -> throw new IllegalStateException(Lang.text("expr.parser.unsupported_binary", operator));
             };
         }
 
@@ -194,7 +195,7 @@ public class PlaceholderConditionExpression {
 
         private ExpressionNode parse() {
             ExpressionNode expression = parseOr();
-            consume(Type.EOF, "表达式末尾存在无法解析的内容");
+            consume(Type.EOF, Lang.text("expr.parser.trailing_content"));
             return expression;
         }
 
@@ -245,7 +246,7 @@ public class PlaceholderConditionExpression {
         private ExpressionNode parsePrimary() {
             if (match(Type.LEFT_PAREN)) {
                 ExpressionNode expression = parseOr();
-                consume(Type.RIGHT_PAREN, "括号缺少 ')'");
+                consume(Type.RIGHT_PAREN, Lang.text("expr.parser.missing_right_paren"));
                 return expression;
             }
             if (match(Type.PLACEHOLDER)) {
@@ -266,7 +267,7 @@ public class PlaceholderConditionExpression {
             if (match(Type.IDENTIFIER)) {
                 return new LiteralNode(ConditionValue.of(previous().lexeme()));
             }
-            throw error(peek(), "无法解析的表达式片段");
+            throw error(peek(), Lang.text("expr.parser.invalid_fragment"));
         }
 
         private boolean match(Type... types) {
@@ -310,9 +311,7 @@ public class PlaceholderConditionExpression {
         }
 
         private IllegalArgumentException error(PlaceholderConditionToken token, String message) {
-            return new IllegalArgumentException(
-                    message + "，位置 " + token.position() + "，表达式: " + source
-            );
+            return new IllegalArgumentException(Lang.text("expr.error", message, token.position(), source));
         }
     }
 }

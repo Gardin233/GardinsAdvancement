@@ -27,11 +27,15 @@ import java.util.Set;
 import java.util.UUID;
 
 public class PlaceholderConditionService {
+    public static final String ALL_ADVANCEMENTS_KEY = "all";
     private static final String PREFIX = "placeholder:";
 
     private final JavaPlugin plugin;
     private Gconfig gconfig;
     private final PlaceholderHook placeholderHook;
+    private final Map<String, Advancement> registeredAdvancements;
+    private final Map<String, ManagedAdvancement> managedAdvancements;
+    private final Map<String, Set<String>> advancementChildren;
     private final List<TrackedAdvancement> trackedAdvancementOrder;
     private final Map<String, TrackedAdvancement> trackedAdvancements;
     private final Map<String, PlaceholderRegistration> placeholderRegistrations;
@@ -47,9 +51,16 @@ public class PlaceholderConditionService {
         this.plugin = plugin;
         this.gconfig = gconfig;
         this.placeholderHook = new PlaceholderHook(plugin);
+        this.registeredAdvancements = Map.copyOf(advancementRegister.getRegisteredAdvancements());
+        AdvancementIndex advancementIndex = buildAdvancementIndex(
+                contentDocument.getAdvancements(),
+                this.registeredAdvancements
+        );
+        this.managedAdvancements = advancementIndex.managedAdvancements();
+        this.advancementChildren = advancementIndex.advancementChildren();
         CompiledTracking compiledTracking = compileTrackedAdvancements(
                 contentDocument.getAdvancements(),
-                advancementRegister.getRegisteredAdvancements()
+                this.registeredAdvancements
         );
         this.trackedAdvancementOrder = compiledTracking.orderedAdvancements();
         this.trackedAdvancements = compiledTracking.trackedAdvancements();
@@ -58,17 +69,20 @@ public class PlaceholderConditionService {
 
     public void start() {
         if (!placeholderHook.isAvailable()) {
-            GLogger.warning("未检测到可用的 PlaceholderAPI，插件仅支持 placeholder 表达式判定，条件服务未启动");
+            GLogger.warningLang("service.placeholder_api_missing");
             return;
         }
         if (trackedAdvancementOrder.isEmpty()) {
-            GLogger.warning("未发现可用的 placeholder 条件表达式，条件服务未启动");
+            GLogger.warningLang("service.no_tracked_conditions");
             return;
         }
         long interval = gconfig.getPlaceholderCheckIntervalTicks();
-        GLogger.info("&f开始启动 placeholder 条件服务，已注册 "
-                + trackedAdvancementOrder.size() + " 个进度、"
-                + placeholderRegistrations.size() + " 个占位符，轮询间隔=" + interval + " ticks");
+        GLogger.infoLang(
+                "service.start",
+                trackedAdvancementOrder.size(),
+                placeholderRegistrations.size(),
+                interval
+        );
         this.task = plugin.getServer().getScheduler().runTaskTimer(
                 plugin,
                 this::checkOnlinePlayers,
@@ -76,7 +90,7 @@ public class PlaceholderConditionService {
                 interval
         );
         checkOnlinePlayers();
-        GLogger.info("&a已启用 placeholder 条件检查");
+        GLogger.infoLang("service.enabled");
     }
 
     public void reloadSettings(Gconfig gconfig) {
@@ -84,8 +98,7 @@ public class PlaceholderConditionService {
         if (task != null) {
             stop();
             start();
-            GLogger.info("&fplaceholder 条件服务已按新设置重新启动，当前轮询间隔="
-                    + gconfig.getPlaceholderCheckIntervalTicks() + " ticks");
+            GLogger.infoLang("service.reloaded", gconfig.getPlaceholderCheckIntervalTicks());
         }
     }
 
@@ -93,14 +106,142 @@ public class PlaceholderConditionService {
         if (task != null) {
             task.cancel();
             task = null;
-            GLogger.info("&fplaceholder 条件服务已停止");
+            GLogger.infoLang("service.stopped");
         }
+    }
+
+    public boolean grantAdvancement(Player player, String tabId, String advancementId) {
+        return grantAdvancement(player, buildKey(tabId, advancementId));
+    }
+
+    public boolean grantAdvancement(Player player, String advancementKey) {
+        ManagedAdvancement managedAdvancement = getManagedAdvancement(advancementKey);
+        if (player == null || managedAdvancement == null) {
+            return false;
+        }
+        ensureParentPathGranted(player, managedAdvancement);
+        Advancement advancement = managedAdvancement.advancement();
+        if (advancement.isGranted(player)) {
+            syncPlayerState(player);
+            GLogger.debugLang("service.manual_grant_skipped", player.getName(), managedAdvancement.key());
+            return true;
+        }
+
+        advancement.grant(player);
+        boolean granted = advancement.isGranted(player);
+        syncPlayerState(player);
+        if (!granted) {
+            GLogger.warningLang("service.manual_grant_failed", player.getName(), managedAdvancement.key());
+            return false;
+        }
+
+        GLogger.infoLang("service.manual_grant_applied", player.getName(), managedAdvancement.key());
+        executeCommands(player, managedAdvancement.key(), managedAdvancement.commands());
+        return true;
+    }
+
+    public boolean grantAllAdvancements(Player player) {
+        if (player == null) {
+            return false;
+        }
+        int grantedCount = 0;
+        List<ManagedAdvancement> ordered = new ArrayList<>(managedAdvancements.values());
+        ordered.sort(Comparator.comparingInt(advancement -> depthOf(advancement.key())));
+        for (ManagedAdvancement managedAdvancement : ordered) {
+            Advancement advancement = managedAdvancement.advancement();
+            if (advancement.isGranted(player)) {
+                continue;
+            }
+            advancement.grant(player);
+            if (!advancement.isGranted(player)) {
+                GLogger.warningLang("service.manual_grant_failed", player.getName(), managedAdvancement.key());
+                continue;
+            }
+            grantedCount++;
+            syncPlayerState(player);
+            executeCommands(player, managedAdvancement.key(), managedAdvancement.commands());
+        }
+        syncPlayerState(player);
+        GLogger.infoLang("service.manual_grant_all_applied", player.getName(), grantedCount);
+        return true;
+    }
+
+    public boolean revokeAdvancement(Player player, String tabId, String advancementId) {
+        return revokeAdvancement(player, buildKey(tabId, advancementId));
+    }
+
+    public boolean revokeAdvancement(Player player, String advancementKey) {
+        ManagedAdvancement managedAdvancement = getManagedAdvancement(advancementKey);
+        if (player == null || managedAdvancement == null) {
+            return false;
+        }
+
+        int revokedCount = 0;
+        for (String key : collectBranchForRevoke(managedAdvancement.key())) {
+            Advancement advancement = registeredAdvancements.get(key);
+            if (advancement == null || !advancement.isGranted(player)) {
+                continue;
+            }
+            advancement.revoke(player);
+            revokedCount++;
+        }
+        syncPlayerState(player);
+        if (revokedCount <= 0) {
+            GLogger.debugLang("service.manual_revoke_skipped", player.getName(), managedAdvancement.key());
+            return true;
+        }
+
+        GLogger.infoLang("service.manual_revoke_applied", player.getName(), managedAdvancement.key(), revokedCount);
+        return true;
+    }
+
+    public boolean revokeAllAdvancements(Player player) {
+        if (player == null) {
+            return false;
+        }
+        int revokedCount = 0;
+        List<ManagedAdvancement> ordered = new ArrayList<>(managedAdvancements.values());
+        ordered.sort(Comparator.comparingInt((ManagedAdvancement advancement) -> depthOf(advancement.key())).reversed());
+        for (ManagedAdvancement managedAdvancement : ordered) {
+            Advancement advancement = managedAdvancement.advancement();
+            if (!advancement.isGranted(player)) {
+                continue;
+            }
+            advancement.revoke(player);
+            revokedCount++;
+        }
+        syncPlayerState(player);
+        GLogger.infoLang("service.manual_revoke_all_applied", player.getName(), revokedCount);
+        return true;
+    }
+
+    public List<String> getManagedAdvancementKeys() {
+        List<String> result = new ArrayList<>(managedAdvancements.keySet());
+        result.sort(String::compareToIgnoreCase);
+        return List.copyOf(result);
+    }
+
+    public void syncPlayerState(Player player) {
+        if (player == null) {
+            return;
+        }
+        PlayerPlaceholderState state = createPlayerState(player);
+        playerStates.put(player.getUniqueId(), state);
+        GLogger.debugLang(
+                "service.player_state_synchronized",
+                player.getName(),
+                state.getActiveAdvancementCount(),
+                state.getActivePlaceholderCount()
+        );
     }
 
     private void checkOnlinePlayers() {
         cleanupOfflinePlayers();
-        GLogger.debug("开始轮询在线玩家 placeholder 条件，当前在线: " + plugin.getServer().getOnlinePlayers().size()
-                + "，缓存玩家数=" + playerStates.size());
+        GLogger.debugLang(
+                "service.poll_start",
+                plugin.getServer().getOnlinePlayers().size(),
+                playerStates.size()
+        );
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             evaluatePlayer(player);
         }
@@ -114,13 +255,13 @@ public class PlaceholderConditionService {
 
         Set<String> changedPlaceholders = updatePlaceholderCaches(player, state);
         if (changedPlaceholders.isEmpty()) {
-            GLogger.debug("玩家 " + player.getName() + " 的占位符数据未发生变化，跳过成就判定");
+            GLogger.debugLang("service.no_placeholder_change", player.getName());
             return;
         }
 
         Set<String> affectedAdvancementKeys = collectAffectedAdvancements(state, changedPlaceholders);
         if (affectedAdvancementKeys.isEmpty()) {
-            GLogger.debug("玩家 " + player.getName() + " 的占位符虽有变化，但没有影响到任何未完成进度");
+            GLogger.debugLang("service.no_affected_advancements", player.getName());
             return;
         }
 
@@ -133,19 +274,19 @@ public class PlaceholderConditionService {
                 releaseAdvancementDependencies(player, state, trackedAdvancement);
                 continue;
             }
-            GLogger.debug("检查玩家 " + player.getName() + " 的进度条件: " + trackedAdvancement.key());
+            GLogger.debugLang("service.evaluating", player.getName(), trackedAdvancement.key());
             if (trackedAdvancement.matches(state::getCurrentValue)) {
                 advancement.grant(player);
                 if (advancement.isGranted(player)) {
-                    GLogger.debug("玩家 " + player.getName() + " 满足 placeholder 条件，授予进度 " + trackedAdvancement.key());
-                    executeCommands(player, trackedAdvancement);
+                    GLogger.debugLang("service.player_granted", player.getName(), trackedAdvancement.key());
                     releaseAdvancementDependencies(player, state, trackedAdvancement);
+                    executeCommands(player, trackedAdvancement.key(), trackedAdvancement.commands());
                 }
             }
         }
 
         if (state.isFullyCompleted()) {
-            GLogger.debug("玩家 " + player.getName() + " 的 placeholder 缓存已全部释放");
+            GLogger.debugLang("service.player_cache_released", player.getName());
         }
     }
 
@@ -177,30 +318,30 @@ public class PlaceholderConditionService {
                     PlaceholderConditionExpression expression = PlaceholderConditionExpression.compile(expressionSource);
                     expressions.add(expression);
                     placeholders.addAll(expression.getPlaceholders());
-                    GLogger.debug("已编译 placeholder 条件: " + key + " -> " + expressionSource);
+                    GLogger.debugLang("service.condition_compiled", key, expressionSource);
                 } catch (IllegalArgumentException exception) {
-                    GLogger.error("placeholder 条件解析失败: " + key + " -> " + exception.getMessage());
+                    GLogger.errorLang("service.condition_parse_failed", key, exception.getMessage());
                     hasUnsupportedCondition = true;
                     break;
                 }
             }
 
             if (expressions.isEmpty()) {
-                GLogger.warning("进度 " + key + " 未提供有效 placeholder 表达式，已跳过自动判断");
+                GLogger.warningLang("service.no_valid_expressions", key);
                 continue;
             }
             if (hasUnsupportedCondition) {
-                GLogger.warning("进度 " + key + " 含有非 placeholder 条件；当前插件仅支持 placeholder 表达式，已跳过自动判断");
+                GLogger.warningLang("service.unsupported_condition", key);
                 continue;
             }
             if (placeholders.isEmpty()) {
-                GLogger.warning("进度 " + key + " 未解析到 placeholder 依赖，已跳过自动判断");
+                GLogger.warningLang("service.no_placeholder_dependency", key);
                 continue;
             }
 
             Advancement advancement = registeredAdvancements.get(key);
             if (advancement == null) {
-                GLogger.warning("进度 " + key + " 尚未注册到 UAA，跳过 placeholder 跟踪");
+                GLogger.warningLang("service.advancement_not_registered", key);
                 continue;
             }
             TrackedAdvancement trackedAdvancement = new TrackedAdvancement(
@@ -216,13 +357,9 @@ public class PlaceholderConditionService {
             for (String placeholder : placeholders) {
                 registrations.computeIfAbsent(placeholder, PlaceholderRegistration::new).addAdvancement(key);
             }
-            GLogger.info("&f已跟踪 placeholder 条件进度: " + key
-                    + "，表达式数量=" + expressions.size()
-                    + "，依赖占位符=" + placeholders.size());
+            GLogger.infoLang("service.tracked_advancement", key, expressions.size(), placeholders.size());
         }
-        GLogger.info("&fplaceholder 依赖图构建完成，共注册 "
-                + trackedAdvancementMap.size() + " 个进度、"
-                + registrations.size() + " 个占位符索引");
+        GLogger.infoLang("service.tracking_complete", trackedAdvancementMap.size(), registrations.size());
         return new CompiledTracking(
                 List.copyOf(orderedResult),
                 Map.copyOf(trackedAdvancementMap),
@@ -249,6 +386,108 @@ public class PlaceholderConditionService {
         return advancement.getTab() + ":" + advancement.getId();
     }
 
+    private String buildKey(String tabId, String advancementId) {
+        return tabId + ":" + advancementId;
+    }
+
+    private AdvancementIndex buildAdvancementIndex(
+            List<GAdvancement> definitions,
+            Map<String, Advancement> registeredAdvancements
+    ) {
+        Map<String, ManagedAdvancement> managed = new LinkedHashMap<>();
+        Map<String, Set<String>> children = new LinkedHashMap<>();
+        for (GAdvancement definition : definitions) {
+            String key = buildKey(definition);
+            Advancement advancement = registeredAdvancements.get(key);
+            if (advancement == null) {
+                continue;
+            }
+            String parentKey = null;
+            if (!definition.isRoot() && definition.getParentId() != null && !definition.getParentId().isBlank()) {
+                parentKey = buildKey(definition.getTab(), definition.getParentId());
+                children.computeIfAbsent(parentKey, ignored -> new LinkedHashSet<>()).add(key);
+            }
+            managed.put(
+                    key,
+                    new ManagedAdvancement(
+                            key,
+                            advancement,
+                            List.copyOf(definition.getCommands()),
+                            parentKey
+                    )
+            );
+        }
+
+        Map<String, Set<String>> copiedChildren = new LinkedHashMap<>();
+        for (Map.Entry<String, Set<String>> entry : children.entrySet()) {
+            copiedChildren.put(entry.getKey(), Set.copyOf(entry.getValue()));
+        }
+        return new AdvancementIndex(Map.copyOf(managed), Map.copyOf(copiedChildren));
+    }
+
+    private ManagedAdvancement getManagedAdvancement(String advancementKey) {
+        if (advancementKey == null || advancementKey.isBlank()) {
+            return null;
+        }
+        String normalized = advancementKey.trim();
+        ManagedAdvancement managedAdvancement = managedAdvancements.get(normalized);
+        if (managedAdvancement == null) {
+            GLogger.warningLang("service.manual_advancement_missing", normalized);
+        }
+        return managedAdvancement;
+    }
+
+    private void ensureParentPathGranted(Player player, ManagedAdvancement managedAdvancement) {
+        List<ManagedAdvancement> ancestors = new ArrayList<>();
+        String currentKey = managedAdvancement.parentKey();
+        while (currentKey != null) {
+            ManagedAdvancement parent = managedAdvancements.get(currentKey);
+            if (parent == null) {
+                break;
+            }
+            ancestors.add(parent);
+            currentKey = parent.parentKey();
+        }
+        ancestors.sort(Comparator.comparingInt(ancestor -> depthOf(ancestor.key())));
+        for (ManagedAdvancement ancestor : ancestors) {
+            if (ancestor.advancement().isGranted(player)) {
+                continue;
+            }
+            ancestor.advancement().grant(player);
+            if (ancestor.advancement().isGranted(player)) {
+                GLogger.debugLang("service.parent_auto_granted", player.getName(), ancestor.key(), managedAdvancement.key());
+            } else {
+                GLogger.warningLang("service.parent_auto_grant_failed", player.getName(), ancestor.key(), managedAdvancement.key());
+            }
+        }
+    }
+
+    private int depthOf(String advancementKey) {
+        int depth = 0;
+        ManagedAdvancement current = managedAdvancements.get(advancementKey);
+        while (current != null && current.parentKey() != null) {
+            depth++;
+            current = managedAdvancements.get(current.parentKey());
+        }
+        return depth;
+    }
+
+    private List<String> collectBranchForRevoke(String advancementKey) {
+        List<String> result = new ArrayList<>();
+        collectBranchForRevoke(advancementKey, result, new HashSet<>());
+        return result;
+    }
+
+    private void collectBranchForRevoke(String advancementKey, List<String> result, Set<String> visited) {
+        if (!visited.add(advancementKey)) {
+            return;
+        }
+        for (String childKey : advancementChildren.getOrDefault(advancementKey, Set.of())) {
+            collectBranchForRevoke(childKey, result, visited);
+        }
+        result.add(advancementKey);
+    }
+
     private PlayerPlaceholderState createPlayerState(Player player) {
         PlayerPlaceholderState state = new PlayerPlaceholderState();
         for (TrackedAdvancement trackedAdvancement : trackedAdvancementOrder) {
@@ -260,8 +499,12 @@ public class PlaceholderConditionService {
                 state.retainPlaceholder(placeholder);
             }
         }
-        GLogger.debug("初始化玩家 " + player.getName() + " 的 placeholder 缓存，未完成进度="
-                + state.getActiveAdvancementCount() + "，活跃占位符=" + state.getActivePlaceholderCount());
+        GLogger.debugLang(
+                "service.player_state_initialized",
+                player.getName(),
+                state.getActiveAdvancementCount(),
+                state.getActivePlaceholderCount()
+        );
         return state;
     }
 
@@ -273,8 +516,12 @@ public class PlaceholderConditionService {
                 changedPlaceholders.add(placeholder);
             }
         }
-        GLogger.debug("玩家 " + player.getName() + " 本轮更新占位符="
-                + state.getActivePlaceholderCount() + "，发生变化=" + changedPlaceholders.size());
+        GLogger.debugLang(
+                "service.cache_updated",
+                player.getName(),
+                state.getActivePlaceholderCount(),
+                changedPlaceholders.size()
+        );
         return changedPlaceholders;
     }
 
@@ -313,30 +560,28 @@ public class PlaceholderConditionService {
         for (String placeholder : trackedAdvancement.placeholders()) {
             int remainingRefs = state.releasePlaceholder(placeholder);
             if (remainingRefs <= 0) {
-                GLogger.debug("玩家 " + player.getName() + " 的占位符缓存已释放: "
-                        + placeholder + "，不再被未完成进度引用");
+                GLogger.debugLang("service.placeholder_released", player.getName(), placeholder);
             } else {
-                GLogger.debug("玩家 " + player.getName() + " 的占位符缓存继续保留: "
-                        + placeholder + "，剩余未完成引用=" + remainingRefs);
+                GLogger.debugLang("service.placeholder_retained", player.getName(), placeholder, remainingRefs);
             }
         }
     }
 
-    private void executeCommands(Player player, TrackedAdvancement trackedAdvancement) {
-        if (trackedAdvancement.commands().isEmpty()) {
+    private void executeCommands(Player player, String advancementKey, List<String> commands) {
+        if (commands.isEmpty()) {
             return;
         }
         ConsoleCommandSender console = Bukkit.getConsoleSender();
-        for (String rawCommand : trackedAdvancement.commands()) {
+        for (String rawCommand : commands) {
             String command = renderCommand(player, rawCommand);
             if (command == null || command.isBlank()) {
                 continue;
             }
             String normalized = command.startsWith("/") ? command.substring(1) : command;
-            GLogger.debug("以控制台身份执行成就指令: " + trackedAdvancement.key() + " -> " + normalized);
+            GLogger.debugLang("service.command_execute", advancementKey, normalized);
             boolean success = Bukkit.dispatchCommand(console, normalized);
             if (!success) {
-                GLogger.warning("成就 " + trackedAdvancement.key() + " 的指令执行失败: " + normalized);
+                GLogger.warningLang("service.command_failed", advancementKey, normalized);
             }
         }
     }
@@ -370,6 +615,20 @@ public class PlaceholderConditionService {
             List<TrackedAdvancement> orderedAdvancements,
             Map<String, TrackedAdvancement> trackedAdvancements,
             Map<String, PlaceholderRegistration> placeholderRegistrations
+    ) {
+    }
+
+    private record AdvancementIndex(
+            Map<String, ManagedAdvancement> managedAdvancements,
+            Map<String, Set<String>> advancementChildren
+    ) {
+    }
+
+    private record ManagedAdvancement(
+            String key,
+            Advancement advancement,
+            List<String> commands,
+            String parentKey
     ) {
     }
 

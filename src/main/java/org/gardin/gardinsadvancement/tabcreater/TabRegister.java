@@ -33,7 +33,7 @@ public class TabRegister {
                 ? api.getAdvancementTab(t.getNameSpace())
                 : api.createAdvancementTab(t.getNameSpace());
         tablist.put(t.getNameSpace(), tab);
-        GLogger.debug("注册 Tab: " + t.getNameSpace());
+        GLogger.debugLang("tab.registered", t.getNameSpace());
         return tab;
     }
 

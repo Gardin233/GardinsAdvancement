@@ -1,5 +1,7 @@
 package org.gardin.gardinsadvancement.condition;
 
+import org.gardin.gardinsadvancement.util.Lang;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -27,7 +29,7 @@ public class PlaceholderConditionLexer {
                 case '!' -> addToken(match('=') ? Type.NOT_EQUALS : Type.NOT, readMatched(start), start);
                 case '=' -> {
                     if (!match('=')) {
-                        throw error("单个 '=' 非法，请使用 '=='");
+                        throw error(Lang.text("expr.lexer.single_equals"));
                     }
                     addToken(Type.EQUALS, readMatched(start), start);
                 }
@@ -35,13 +37,13 @@ public class PlaceholderConditionLexer {
                 case '<' -> addToken(match('=') ? Type.LESS_EQUALS : Type.LESS, readMatched(start), start);
                 case '&' -> {
                     if (!match('&')) {
-                        throw error("单个 '&' 非法，请使用 '&&'");
+                        throw error(Lang.text("expr.lexer.single_ampersand"));
                     }
                     addToken(Type.AND, readMatched(start), start);
                 }
                 case '|' -> {
                     if (!match('|')) {
-                        throw error("单个 '|' 非法，请使用 '||'");
+                        throw error(Lang.text("expr.lexer.single_pipe"));
                     }
                     addToken(Type.OR, readMatched(start), start);
                 }
@@ -53,7 +55,7 @@ public class PlaceholderConditionLexer {
                     } else if (isIdentifierStart(c)) {
                         scanIdentifier(start);
                     } else {
-                        throw error("无法识别的字符: '" + c + "'");
+                        throw error(Lang.text("expr.lexer.unknown_char", c));
                     }
                 }
             }
@@ -67,7 +69,7 @@ public class PlaceholderConditionLexer {
             advance();
         }
         if (isAtEnd()) {
-            throw error("字符串缺少结束引号");
+            throw error(Lang.text("expr.lexer.string_unterminated"));
         }
         advance();
         String content = source.substring(start + 1, current - 1);
@@ -79,7 +81,7 @@ public class PlaceholderConditionLexer {
             advance();
         }
         if (isAtEnd()) {
-            throw error("placeholder 缺少结束的 '%'");
+            throw error(Lang.text("expr.lexer.placeholder_unterminated"));
         }
         advance();
         String content = source.substring(start, current);
@@ -158,6 +160,6 @@ public class PlaceholderConditionLexer {
     }
 
     private IllegalArgumentException error(String message) {
-        return new IllegalArgumentException(message + "，位置 " + current + "，表达式: " + source);
+        return new IllegalArgumentException(Lang.text("expr.error", message, current, source));
     }
 }

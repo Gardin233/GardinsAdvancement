@@ -18,7 +18,7 @@ public enum TabDisplayMode {
             case "indirect" -> INDIRECT;
             case "manual", "off", "disabled" -> MANUAL;
             default -> {
-                GLogger.warning(source + " 的 display-mode=" + rawValue + " 非法，已回退为 direct");
+                GLogger.warningLang("tab.display_mode_invalid", source, rawValue);
                 yield DIRECT;
             }
         };

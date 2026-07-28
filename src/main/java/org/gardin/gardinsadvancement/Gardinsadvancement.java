@@ -2,6 +2,7 @@ package org.gardin.gardinsadvancement;
 
 import com.fren_gor.ultimateAdvancementAPI.UltimateAdvancementAPI;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.gardin.gardinsadvancement.advancementregister.AdvancementRegister;
@@ -13,6 +14,8 @@ import org.gardin.gardinsadvancement.tabcreater.TabRegister;
 import org.gardin.gardinsadvancement.textchecker.ContentDocument;
 import org.gardin.gardinsadvancement.textchecker.ContentLoader;
 import org.gardin.gardinsadvancement.util.GLogger;
+
+import java.util.List;
 
 public final class Gardinsadvancement extends JavaPlugin {
     private UltimateAdvancementAPI advancementAPI;
@@ -27,16 +30,20 @@ public final class Gardinsadvancement extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        GLogger.info("&f插件启动中，开始加载基础配置");
         this.confRegister = new ConfRegister(this);
         this.gconfig = this.confRegister.init();
+        GLogger.infoLang("plugin.enable.loading_base");
         GLogger.setDebug(gconfig.isDebug());
-        GLogger.debug("配置摘要: content-folder=" + gconfig.getContentFolder()
-                + ", copy-example-content=" + gconfig.isCopyExampleContent()
-                + ", default-tab-background=" + gconfig.getDefaultTabBackground()
-                + ", fallback-icon=" + gconfig.getFallbackIcon()
-                + ", placeholder-check-interval-ticks=" + gconfig.getPlaceholderCheckIntervalTicks()
-                + ", startup-delay-ticks=" + gconfig.getStartupDelayTicks());
+        GLogger.debugLang(
+                "plugin.config_summary",
+                gconfig.getLanguage(),
+                gconfig.getContentFolder(),
+                gconfig.isCopyExampleContent(),
+                gconfig.getDefaultTabBackground(),
+                gconfig.getFallbackIcon(),
+                gconfig.getPlaceholderCheckIntervalTicks(),
+                gconfig.getStartupDelayTicks()
+        );
         this.commandsRegister = new commandsRegister(this);
         this.commandsRegister.init();
         scheduleRuntimeBootstrap();
@@ -45,27 +52,27 @@ public final class Gardinsadvancement extends JavaPlugin {
     private void scheduleRuntimeBootstrap() {
         long delay = gconfig.getStartupDelayTicks();
         if (delay <= 0L) {
-            GLogger.info("&f未设置启动延迟，立即初始化进度系统");
+            GLogger.infoLang("plugin.enable.no_startup_delay");
             bootstrapRuntime();
             return;
         }
-        GLogger.info("&f已启用延迟启动，将在 " + delay + " ticks 后初始化进度系统，等待 CraftEngine 数据包先完成加载");
+        GLogger.infoLang("plugin.enable.delayed_startup", delay);
         this.startupTask = Bukkit.getScheduler().runTaskLater(this, this::bootstrapRuntime, delay);
     }
 
     private void bootstrapRuntime() {
         if (runtimeInitialized) {
-            GLogger.debug("进度系统已初始化，跳过重复启动");
+            GLogger.debugLang("plugin.enable.runtime_already_initialized");
             return;
         }
         this.startupTask = null;
-        GLogger.info("&f开始初始化进度系统与运行时服务");
+        GLogger.infoLang("plugin.enable.runtime_bootstrap_start");
         this.advancementAPI = UltimateAdvancementAPI.getInstance(this);
-        GLogger.info("&fUltimateAdvancementAPI 已挂载");
+        GLogger.infoLang("plugin.enable.uaa_hooked");
 
         ContentLoader contentLoader = new ContentLoader(this, gconfig);
         ContentDocument contentDocument = contentLoader.init();
-        GLogger.info("&f内容解析完成，开始注册 Tab 与 Advancement");
+        GLogger.infoLang("plugin.enable.content_loaded");
 
         this.tabRegister = new TabRegister(advancementAPI, contentDocument.getTabs(), gconfig);
         this.tabRegister.init();
@@ -85,39 +92,98 @@ public final class Gardinsadvancement extends JavaPlugin {
         this.placeholderConditionService.start();
         this.runtimeInitialized = true;
 
-        GLogger.info("&a插件已完成启动，解析到 "
-                + contentDocument.getTabs().size() + " 个 Tab，"
-                + contentDocument.getAdvancements().size() + " 个进度");
+        GLogger.infoLang(
+                "plugin.enable.complete",
+                contentDocument.getTabs().size(),
+                contentDocument.getAdvancements().size()
+        );
     }
 
     public void reloadSettings() {
-        GLogger.info("&f收到设置重载请求，开始重新读取 config.yml");
         this.gconfig = this.confRegister.init();
+        GLogger.infoLang("plugin.reload.request");
         GLogger.setDebug(gconfig.isDebug());
-        GLogger.debug("重载后配置摘要: content-folder=" + gconfig.getContentFolder()
-                + ", copy-example-content=" + gconfig.isCopyExampleContent()
-                + ", default-tab-background=" + gconfig.getDefaultTabBackground()
-                + ", fallback-icon=" + gconfig.getFallbackIcon()
-                + ", placeholder-check-interval-ticks=" + gconfig.getPlaceholderCheckIntervalTicks()
-                + ", startup-delay-ticks=" + gconfig.getStartupDelayTicks());
+        GLogger.debugLang(
+                "plugin.config_summary",
+                gconfig.getLanguage(),
+                gconfig.getContentFolder(),
+                gconfig.isCopyExampleContent(),
+                gconfig.getDefaultTabBackground(),
+                gconfig.getFallbackIcon(),
+                gconfig.getPlaceholderCheckIntervalTicks(),
+                gconfig.getStartupDelayTicks()
+        );
         if (this.placeholderConditionService != null) {
             this.placeholderConditionService.reloadSettings(gconfig);
         }
         if (!runtimeInitialized && startupTask != null) {
             startupTask.cancel();
-            GLogger.info("&f检测到进度系统尚未初始化，已按新设置重新安排延迟启动");
+            GLogger.infoLang("plugin.reload.runtime_rescheduled");
             scheduleRuntimeBootstrap();
         }
-        GLogger.info("&a设置重载完成，仅运行时设置已立即生效");
+        GLogger.infoLang("plugin.reload.complete");
     }
 
     public Gconfig getGconfig() {
         return gconfig;
     }
 
+    public boolean grantAdvancement(Player player, String tabId, String advancementId) {
+        if (placeholderConditionService == null) {
+            GLogger.warningLang("plugin.runtime_unavailable");
+            return false;
+        }
+        return placeholderConditionService.grantAdvancement(player, tabId, advancementId);
+    }
+
+    public boolean grantAdvancement(Player player, String advancementKey) {
+        if (placeholderConditionService == null) {
+            GLogger.warningLang("plugin.runtime_unavailable");
+            return false;
+        }
+        if (PlaceholderConditionService.ALL_ADVANCEMENTS_KEY.equalsIgnoreCase(advancementKey)) {
+            return placeholderConditionService.grantAllAdvancements(player);
+        }
+        return placeholderConditionService.grantAdvancement(player, advancementKey);
+    }
+
+    public boolean revokeAdvancement(Player player, String tabId, String advancementId) {
+        if (placeholderConditionService == null) {
+            GLogger.warningLang("plugin.runtime_unavailable");
+            return false;
+        }
+        return placeholderConditionService.revokeAdvancement(player, tabId, advancementId);
+    }
+
+    public boolean revokeAdvancement(Player player, String advancementKey) {
+        if (placeholderConditionService == null) {
+            GLogger.warningLang("plugin.runtime_unavailable");
+            return false;
+        }
+        if (PlaceholderConditionService.ALL_ADVANCEMENTS_KEY.equalsIgnoreCase(advancementKey)) {
+            return placeholderConditionService.revokeAllAdvancements(player);
+        }
+        return placeholderConditionService.revokeAdvancement(player, advancementKey);
+    }
+
+    public List<String> getManageableAdvancementKeys() {
+        if (placeholderConditionService == null) {
+            return List.of();
+        }
+        return placeholderConditionService.getManagedAdvancementKeys();
+    }
+
+    public void syncPlayerAdvancementCache(Player player) {
+        if (placeholderConditionService == null) {
+            GLogger.warningLang("plugin.runtime_unavailable");
+            return;
+        }
+        placeholderConditionService.syncPlayerState(player);
+    }
+
     @Override
     public void onDisable() {
-        GLogger.info("&f插件关闭中，开始释放运行时服务");
+        GLogger.infoLang("plugin.disable.start");
         if (startupTask != null) {
             startupTask.cancel();
             startupTask = null;
@@ -125,6 +191,6 @@ public final class Gardinsadvancement extends JavaPlugin {
         if (placeholderConditionService != null) {
             placeholderConditionService.stop();
         }
-        GLogger.info("&e插件已卸载");
+        GLogger.infoLang("plugin.disable.complete");
     }
 }

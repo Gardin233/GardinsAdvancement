@@ -52,7 +52,7 @@ public class AdvancementRegister {
     }
 
     public void init() {
-        GLogger.info("&f开始注册 Advancement，共待处理 " + gAdvancements.size() + " 个定义");
+        GLogger.infoLang("advancement.register_start", gAdvancements.size());
         Map<String, List<GAdvancement>> grouped = gAdvancements.stream().collect(
                 Collectors.groupingBy(
                         GAdvancement::getTab,
@@ -61,16 +61,16 @@ public class AdvancementRegister {
                 )
         );
         for (Map.Entry<String, List<GAdvancement>> entry : grouped.entrySet()) {
-            GLogger.debug("准备注册 Tab " + entry.getKey() + " 下的 " + entry.getValue().size() + " 个进度");
+            GLogger.debugLang("advancement.preparing_tab", entry.getKey(), entry.getValue().size());
             registerTab(entry.getKey(), entry.getValue());
         }
-        GLogger.info("&fAdvancement 注册流程结束，共注册 " + advancements.size() + " 个进度对象");
+        GLogger.infoLang("advancement.register_complete", advancements.size());
     }
 
     private void registerTab(String tabId, List<GAdvancement> definitions) {
         AdvancementTab tab = advancementTabs.get(tabId);
         if (tab == null) {
-            GLogger.error("找不到已注册的 Tab: " + tabId);
+            GLogger.errorLang("advancement.tab_missing", tabId);
             return;
         }
         Tab tabMeta = tabs.get(tabId);
@@ -78,14 +78,14 @@ public class AdvancementRegister {
                 .filter(GAdvancement::isRoot)
                 .toList();
         if (rootsInTab.isEmpty()) {
-            GLogger.error("Tab " + tabId + " 缺少 root 进度，已跳过");
+            GLogger.errorLang("advancement.root_missing", tabId);
             return;
         }
         if (rootsInTab.size() > 1) {
-            GLogger.warning("Tab " + tabId + " 存在多个 root，仅使用第一个");
+            GLogger.warningLang("advancement.multiple_roots", tabId);
         }
         GAdvancement rootDefinition = rootsInTab.getFirst();
-        GLogger.info("&f注册 Tab " + tabId + " 的 root 进度: " + rootDefinition.getId());
+        GLogger.infoLang("advancement.root_registered", tabId, rootDefinition.getId());
         RootAdvancement rootAdvancement = createRootAdvancement(tab, tabMeta, rootDefinition);
         roots.put(buildKey(tabId, rootDefinition.getId()), rootAdvancement);
         advancements.put(buildKey(tabId, rootDefinition.getId()), rootAdvancement);
@@ -107,27 +107,37 @@ public class AdvancementRegister {
                 GAdvancement definition = iterator.next();
                 Advancement parent = created.get(definition.getParentId());
                 if (parent == null) {
-                    GLogger.debug("进度 " + buildKey(tabId, definition.getId())
-                            + " 等待父进度 " + definition.getParentId() + " 先完成注册");
+                    GLogger.debugLang(
+                            "advancement.waiting_parent",
+                            buildKey(tabId, definition.getId()),
+                            definition.getParentId()
+                    );
                     continue;
                 }
                 BaseAdvancement advancement = createAdvancement(definition, parent);
                 created.put(definition.getId(), advancement);
                 advancements.put(buildKey(tabId, definition.getId()), advancement);
                 children.add(advancement);
-                GLogger.info("&f已注册普通进度: " + buildKey(tabId, definition.getId())
-                        + " -> parent=" + definition.getParentId());
+                GLogger.infoLang(
+                        "advancement.child_registered",
+                        buildKey(tabId, definition.getId()),
+                        definition.getParentId()
+                );
                 iterator.remove();
                 progressed = true;
             }
         } while (progressed && !unresolved.isEmpty());
 
         for (GAdvancement definition : unresolved) {
-            GLogger.error("进度 " + buildKey(tabId, definition.getId()) + " 找不到父进度 " + definition.getParentId());
+            GLogger.errorLang(
+                    "advancement.missing_parent",
+                    buildKey(tabId, definition.getId()),
+                    definition.getParentId()
+            );
         }
         tab.registerAdvancements(rootAdvancement, children);
         configureTabDisplay(tab, tabMeta, rootAdvancement);
-        GLogger.debug("完成注册 Tab " + tabId + "，共 " + (children.size() + 1) + " 个进度");
+        GLogger.debugLang("advancement.tab_complete", tabId, children.size() + 1);
     }
 
     private String buildKey(String tabId, String advancementId) {
@@ -139,9 +149,7 @@ public class AdvancementRegister {
         String background = tabMeta == null
                 ? gconfig.getDefaultTabBackground()
                 : tabMeta.getBackgroundTexture();
-        GLogger.debug("创建 RootAdvancement: tab=" + tab.getNamespace()
-                + ", id=" + gAdv.getId()
-                + ", background=" + background);
+        GLogger.debugLang("advancement.root_created", tab.getNamespace(), gAdv.getId(), background);
         return new RootAdvancement(
                 tab,
                 gAdv.getId(),
@@ -152,9 +160,7 @@ public class AdvancementRegister {
 
     public BaseAdvancement createAdvancement(GAdvancement gAdv, Advancement parent) {
         AdvancementDisplay display = gAdv.getData().createDisplay();
-        GLogger.debug("创建 BaseAdvancement: id=" + gAdv.getId()
-                + ", parent=" + gAdv.getParentId()
-                + ", tab=" + gAdv.getTab());
+        GLogger.debugLang("advancement.base_created", gAdv.getId(), gAdv.getParentId(), gAdv.getTab());
         return new BaseAdvancement(gAdv.getId(), display, parent);
     }
 
@@ -167,7 +173,7 @@ public class AdvancementRegister {
         switch (displayMode) {
             case DIRECT -> {
                 tab.automaticallyShowToPlayers();
-                GLogger.info("&fTab " + tab.getNamespace() + " 已启用直接显示模式");
+                GLogger.infoLang("advancement.display_direct", tab.getNamespace());
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     if (!tab.isShownTo(player)) {
                         tab.showTab(player);
@@ -176,14 +182,14 @@ public class AdvancementRegister {
             }
             case INDIRECT -> {
                 tab.automaticallyGrantRootAdvancement();
-                GLogger.info("&fTab " + tab.getNamespace() + " 已启用间接显示模式，将自动授予 root");
+                GLogger.infoLang("advancement.display_indirect", tab.getNamespace());
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     if (!rootAdvancement.isGranted(player)) {
                         tab.grantRootAdvancement(player, false);
                     }
                 }
             }
-            case MANUAL -> GLogger.info("&fTab " + tab.getNamespace() + " 已启用手动显示模式，不自动展示");
+            case MANUAL -> GLogger.infoLang("advancement.display_manual", tab.getNamespace());
         }
     }
 }
