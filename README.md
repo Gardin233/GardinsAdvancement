@@ -39,7 +39,7 @@ Gardin's Advancement 使用 PlaceholderAPI 作为统一数据接口。
 我们还支持对进度条的支持，目前仅支持一个变量
 ```yml
 progress:
-  placeholder: '%%player_level%%'
+  placeholder: '%player_level%'
   max: 10
 ```
 这意味着显示成就进度条，当玩家等级达到10级时，成就会被完成。
