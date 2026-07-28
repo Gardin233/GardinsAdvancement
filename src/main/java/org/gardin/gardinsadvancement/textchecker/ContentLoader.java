@@ -181,8 +181,8 @@ public class ContentLoader {
                 YamlLexicalParser.parseFrameType(dataSection.getString("frame"), location + ".data.frame"),
                 dataSection.getBoolean("show_toast", true),
                 dataSection.getBoolean("announce_chat", true),
-                (float) dataSection.getDouble("x", 0.0D),
-                (float) dataSection.getDouble("y", 0.0D),
+                YamlLexicalParser.readPositiveCoordinate(dataSection, "x", 1.0F, location + ".data"),
+                YamlLexicalParser.readPositiveCoordinate(dataSection, "y", 1.0F, location + ".data"),
                 YamlLexicalParser.parseColor(dataSection.getString("color"), location + ".data.color"),
                 YamlLexicalParser.readColoredStringList(dataSection, "description")
         );

@@ -1,45 +1,183 @@
 tabs:
-  novice_path:
-    # Tab 显示模式:
+  survival_journey:
+   # Tab 显示模式:
     # direct   -> 直接显示 Tab，即使玩家还没有这个页签下的任何成就
     # indirect -> 通过自动授予 root 间接显示 Tab
     # manual   -> 不自动处理 Tab 显示
     display-mode: direct
-    background: "minecraft:textures/block/stone.png"
+    background: "minecraft:textures/block/deepslate.png"
     advancements:
-      novice_root:
+      journey_root:
         type: root
         conditions:
           - "placeholder: %player_level% >= 0"
         commands:
-          - "say %player_name% 已解锁根成就 novice_root"
-          - "tell %player_name% &a欢迎来到新手之路"
+          - "say %player_name% 已进入生存远征测试线"
         data:
-          title: "&a初入世界"
-          icon: minecraft:acacia_door
+          title: "&a生存远征"
+          icon: minecraft:compass
           frame: task
           show_toast: true
           announce_chat: true
-          x: 10
-          y: 20
+          x: 0
+          y: 0
           description:
-            - "&7这是新手线路的根节点"
-      novice_step_one:
+            - "&7复杂测试树的根节点"
+            - "&7用于验证多层分支与命令执行"
+
+      gather_logs:
         type: common
-        parent: novice_root
+        parent: journey_root
         conditions:
-          - "placeholder: %player_level% >= 5"
-        commands: |
-          say %player_name% 已达成 novice_step_one
-          give %player_name% minecraft:diamond 1
+          - "placeholder: %player_level% >= 2"
+        commands:
+          - "tell %player_name% &a你已完成 gather_logs"
         data:
-          title: "&b迈出第一步"
-          icon: CE:customfishing:sturgeon_fish_golden_star
+          title: "&6收集原木"
+          icon: minecraft:oak_log
+          frame: task
+          show_toast: true
+          announce_chat: false
+          x: 2
+          y: 4
+          description:
+            - "&7第一条发展线路的起点"
+
+      craft_table:
+        type: common
+        parent: gather_logs
+        conditions:
+          - "placeholder: %player_level% >= 4"
+        commands: |
+          say %player_name% 已完成 craft_table
+          give %player_name% minecraft:apple 2
+        data:
+          title: "&e制作工作台"
+          icon: minecraft:crafting_table
+          frame: task
+          show_toast: true
+          announce_chat: false
+          x: 4
+          y: 4
+          description:
+            - "&7验证多行 commands 与父子链路"
+
+      stone_age:
+        type: common
+        parent: craft_table
+        conditions:
+          - "placeholder: %player_level% >= 6"
+        data:
+          title: "&7石器时代"
+          icon: minecraft:stone_pickaxe
           frame: goal
           show_toast: true
           announce_chat: true
-          x: 12
-          y: 20
+          x: 6
+          y: 4
           description:
-            - "&7这个普通节点绑定在 novice_root 下"
+            - "&7继续向采矿分支推进"
 
+      smelt_iron:
+        type: common
+        parent: stone_age
+        conditions:
+          - "placeholder: %player_level% >= 8"
+        commands:
+          - "say %player_name% 已完成 smelt_iron"
+        data:
+          title: "&f冶炼铁锭"
+          icon: minecraft:iron_ingot
+          frame: goal
+          show_toast: true
+          announce_chat: true
+          x: 8
+          y: 4
+          description:
+            - "&7采矿主线的中段节点"
+
+      deep_caving:
+        type: common
+        parent: smelt_iron
+        conditions:
+          - "placeholder: %player_level% >= 12"
+        data:
+          title: "&8深入洞穴"
+          icon: minecraft:lantern
+          frame: challenge
+          show_toast: true
+          announce_chat: true
+          x: 10
+          y: 2
+          description:
+            - "&7第一条线路的高阶节点"
+
+      farming_start:
+        type: common
+        parent: journey_root
+        conditions:
+          - "placeholder: %player_level% >= 3"
+        data:
+          title: "&a开垦农田"
+          icon: minecraft:wheat_seeds
+          frame: task
+          show_toast: true
+          announce_chat: false
+          x: 2
+          y: 2
+          description:
+            - "&7第二条发展线路的起点"
+
+      harvest_wheat:
+        type: common
+        parent: farming_start
+        conditions:
+          - "placeholder: %player_level% >= 5"
+        commands:
+          - "tell %player_name% &e你已完成 harvest_wheat"
+        data:
+          title: "&e收获小麦"
+          icon: minecraft:wheat
+          frame: task
+          show_toast: true
+          announce_chat: false
+          x: 4
+          y: 2
+          description:
+            - "&7农业分支的基础节点"
+
+      breed_animals:
+        type: common
+        parent: harvest_wheat
+        conditions:
+          - "placeholder: %player_level% >= 7"
+        data:
+          title: "&d繁育牲畜"
+          icon: minecraft:golden_carrot
+          frame: goal
+          show_toast: true
+          announce_chat: true
+          x: 6
+          y: 2
+          description:
+            - "&7用于测试另一条并列分支"
+
+      village_trade:
+        type: common
+        parent: breed_animals
+        conditions:
+          - "placeholder: %player_level% >= 10"
+        commands: |
+          say %player_name% 已完成 village_trade
+          give %player_name% minecraft:emerald 3
+        data:
+          title: "&b村庄交易"
+          icon: minecraft:emerald
+          frame: challenge
+          show_toast: true
+          announce_chat: true
+          x: 8
+          y: 2
+          description:
+            - "&7复杂示例的第十个节点"
+            - "&7可用于测试 grant/revoke all"

@@ -43,6 +43,7 @@ yaml:
   invalid_type: "&e{0} 的 type={1} 非法，已回退为 common"
   invalid_frame: "&e{0} 的 frame={1} 非法，已回退为 TASK"
   invalid_color: "&e{0} 的 color={1} 非法，已忽略"
+  invalid_positive_coordinate: "&e{0}.{1}={2} 非法；x 和 y 只能大于 0，已回退为 {3}"
   invalid_material: "&e{0} 的材质={1} 无法识别，已回退为 {2}"
   ce_icon_fallback: "&e{0} 的 CE 图标={1} 当前未能解析，已回退为 {2}"
 
@@ -119,7 +120,7 @@ service:
   manual_grant_failed: "&e给予玩家 {0} 进度 {1} 失败"
   manual_grant_applied: "&f已给予玩家 {0} 进度 {1}，并同步缓存树"
   manual_revoke_skipped: "玩家 {0} 当前不持有进度 {1}，无需移除"
-  manual_revoke_applied: "&f已移除玩家 {0} 的进度分支 {1}，共撤销 {2} 个节点，并同步缓存树"
+  manual_revoke_applied: "&f已移除玩家 {0} 的进度 {1}，并同步缓存树；其他独立节点会被保留"
   manual_grant_all_applied: "&f已给予玩家 {0} 全部进度，共新增 {1} 个节点，并同步缓存树"
   manual_revoke_all_applied: "&f已移除玩家 {0} 的全部进度，共撤销 {1} 个节点，并同步缓存树"
   parent_auto_granted: "为保持进度树一致，已自动给予玩家 {0} 父进度 {1} -> target={2}"

@@ -107,6 +107,18 @@ public final class YamlLexicalParser {
         return result;
     }
 
+    public static float readPositiveCoordinate(ConfigurationSection section, String path, float fallback, String source) {
+        if (section == null || !section.contains(path)) {
+            return fallback;
+        }
+        double rawValue = section.getDouble(path, fallback);
+        if (rawValue > 0.0D) {
+            return (float) rawValue;
+        }
+        GLogger.warningLang("yaml.invalid_positive_coordinate", source, path, rawValue, fallback);
+        return fallback;
+    }
+
     //成就类型解析器
     public static String parseAdvancementType(String rawType, String source) {
         String normalized = rawType == null ? "common" : rawType.trim().toLowerCase(Locale.ROOT);

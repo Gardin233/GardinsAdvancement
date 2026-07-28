@@ -43,6 +43,7 @@ yaml:
   invalid_type: "&e{0} has invalid type={1}, falling back to common"
   invalid_frame: "&e{0} has invalid frame={1}, falling back to TASK"
   invalid_color: "&e{0} has invalid color={1}, ignoring it"
+  invalid_positive_coordinate: "&e{0}.{1}={2} is invalid; x and y must be greater than 0, falling back to {3}"
   invalid_material: "&e{0} has unrecognized material={1}, falling back to {2}"
   ce_icon_fallback: "&e{0} has unresolved CE icon={1}, falling back to {2}"
 
@@ -119,7 +120,7 @@ service:
   manual_grant_failed: "&eFailed to grant advancement {1} to player {0}"
   manual_grant_applied: "&fGranted advancement {1} to player {0} and synchronized the cache tree"
   manual_revoke_skipped: "Player {0} does not currently have advancement {1}, nothing to revoke"
-  manual_revoke_applied: "&fRevoked advancement branch {1} from player {0}, removed {2} nodes, and synchronized the cache tree"
+  manual_revoke_applied: "&fRevoked advancement {1} from player {0} and synchronized the cache tree; other independent nodes remain intact"
   manual_grant_all_applied: "&fGranted all advancements to player {0}, added {1} nodes, and synchronized the cache tree"
   manual_revoke_all_applied: "&fRevoked all advancements from player {0}, removed {1} nodes, and synchronized the cache tree"
   parent_auto_granted: "Auto-granted parent advancement {1} to player {0} to keep the advancement tree consistent -> target={2}"

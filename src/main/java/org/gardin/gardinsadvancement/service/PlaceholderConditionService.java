@@ -35,7 +35,6 @@ public class PlaceholderConditionService {
     private final PlaceholderHook placeholderHook;
     private final Map<String, Advancement> registeredAdvancements;
     private final Map<String, ManagedAdvancement> managedAdvancements;
-    private final Map<String, Set<String>> advancementChildren;
     private final List<TrackedAdvancement> trackedAdvancementOrder;
     private final Map<String, TrackedAdvancement> trackedAdvancements;
     private final Map<String, PlaceholderRegistration> placeholderRegistrations;
@@ -57,7 +56,6 @@ public class PlaceholderConditionService {
                 this.registeredAdvancements
         );
         this.managedAdvancements = advancementIndex.managedAdvancements();
-        this.advancementChildren = advancementIndex.advancementChildren();
         CompiledTracking compiledTracking = compileTrackedAdvancements(
                 contentDocument.getAdvancements(),
                 this.registeredAdvancements
@@ -176,22 +174,19 @@ public class PlaceholderConditionService {
             return false;
         }
 
-        int revokedCount = 0;
-        for (String key : collectBranchForRevoke(managedAdvancement.key())) {
-            Advancement advancement = registeredAdvancements.get(key);
-            if (advancement == null || !advancement.isGranted(player)) {
-                continue;
-            }
+        Advancement advancement = managedAdvancement.advancement();
+        boolean revoked = false;
+        if (advancement.isGranted(player)) {
             advancement.revoke(player);
-            revokedCount++;
+            revoked = true;
         }
         syncPlayerState(player);
-        if (revokedCount <= 0) {
+        if (!revoked) {
             GLogger.debugLang("service.manual_revoke_skipped", player.getName(), managedAdvancement.key());
             return true;
         }
 
-        GLogger.infoLang("service.manual_revoke_applied", player.getName(), managedAdvancement.key(), revokedCount);
+        GLogger.infoLang("service.manual_revoke_applied", player.getName(), managedAdvancement.key());
         return true;
     }
 
@@ -395,7 +390,6 @@ public class PlaceholderConditionService {
             Map<String, Advancement> registeredAdvancements
     ) {
         Map<String, ManagedAdvancement> managed = new LinkedHashMap<>();
-        Map<String, Set<String>> children = new LinkedHashMap<>();
         for (GAdvancement definition : definitions) {
             String key = buildKey(definition);
             Advancement advancement = registeredAdvancements.get(key);
@@ -405,7 +399,6 @@ public class PlaceholderConditionService {
             String parentKey = null;
             if (!definition.isRoot() && definition.getParentId() != null && !definition.getParentId().isBlank()) {
                 parentKey = buildKey(definition.getTab(), definition.getParentId());
-                children.computeIfAbsent(parentKey, ignored -> new LinkedHashSet<>()).add(key);
             }
             managed.put(
                     key,
@@ -417,12 +410,7 @@ public class PlaceholderConditionService {
                     )
             );
         }
-
-        Map<String, Set<String>> copiedChildren = new LinkedHashMap<>();
-        for (Map.Entry<String, Set<String>> entry : children.entrySet()) {
-            copiedChildren.put(entry.getKey(), Set.copyOf(entry.getValue()));
-        }
-        return new AdvancementIndex(Map.copyOf(managed), Map.copyOf(copiedChildren));
+        return new AdvancementIndex(Map.copyOf(managed));
     }
 
     private ManagedAdvancement getManagedAdvancement(String advancementKey) {
@@ -470,22 +458,6 @@ public class PlaceholderConditionService {
             current = managedAdvancements.get(current.parentKey());
         }
         return depth;
-    }
-
-    private List<String> collectBranchForRevoke(String advancementKey) {
-        List<String> result = new ArrayList<>();
-        collectBranchForRevoke(advancementKey, result, new HashSet<>());
-        return result;
-    }
-
-    private void collectBranchForRevoke(String advancementKey, List<String> result, Set<String> visited) {
-        if (!visited.add(advancementKey)) {
-            return;
-        }
-        for (String childKey : advancementChildren.getOrDefault(advancementKey, Set.of())) {
-            collectBranchForRevoke(childKey, result, visited);
-        }
-        result.add(advancementKey);
     }
 
     private PlayerPlaceholderState createPlayerState(Player player) {
@@ -619,8 +591,7 @@ public class PlaceholderConditionService {
     }
 
     private record AdvancementIndex(
-            Map<String, ManagedAdvancement> managedAdvancements,
-            Map<String, Set<String>> advancementChildren
+            Map<String, ManagedAdvancement> managedAdvancements
     ) {
     }
 
