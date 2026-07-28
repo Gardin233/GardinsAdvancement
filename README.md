@@ -1,5 +1,7 @@
 # Gardin's Advancement
 ![GitHub License](https://img.shields.io/github/license/Gardin233/GardinsAdvancement)
+
+
 前置:
  - UltimateAdvancementAPI
  - PlaceHolderAPI
@@ -15,10 +17,6 @@
 现如今placeholder几乎充斥在所有的插件里，越来越多的插件选择它作为暴露内部状态的工具
 
 所以使用它作为条件再好不过了，既能保持成就插件本身轻量，又能天然兼容所有提供 Placeholder 的插件。
-
-
-
-
 
 
 ## Gardin's Advancement 正是基于这一理念设计的。
@@ -50,8 +48,6 @@ progress:
 若您的placeholder传入非数值数据则永远被标记为0，若您传入浮点数则会被强行向下取整
 
 这两种方式可以共存，也可以独立存在。
-
-
 
 对于复杂逻辑，可以结合 PlaceholderAPI 的 JS 扩展或其他脚本插件进行封装。
 
@@ -109,6 +105,12 @@ tabs:
           description:
             - "&a这个普通节点绑定在 novice_root 下"
 ```
+## Placeholder
+
+我们也拥有自己的papi变量实现！
+
+您可以在游戏中使用 >/ga placeholder 来得知这些占位符和作用
+
 # 请注意
 如果您需要基于即时事件触发的成就系统（例如：玩家挖掘方块瞬间触发、击杀实体立即检测等），那么本插件可能不适合您的需求。
 Gardin's Advancement 的设计目标并不是替代事件监听系统，而是提供一个基于 PlaceholderAPI 的通用条件检测框架。
