@@ -138,6 +138,15 @@ service:
   manual_grant_all_applied: "&f已给予玩家 {0} 全部进度，共新增 {1} 个节点，并同步缓存树"
   manual_revoke_all_applied: "&f已移除玩家 {0} 的全部进度，共撤销 {1} 个节点，并同步缓存树"
 
+storage:
+  connected: "&f玩家进度存储已连接，当前模式={0}"
+  connect_failed: "&c玩家进度存储连接失败: mode={0}, reason={1}"
+  load_failed: "&c读取玩家 {0} 的进度存储失败: {1}"
+  save_failed: "&c写入玩家 {0} 的进度记录失败: advancement={1}, reason={2}"
+  closed: "&f玩家进度存储已关闭，当前模式={0}"
+  folder_create_failed: "&e无法创建 SQLite 数据目录: {0}"
+  player_sync_complete: "&f已按数据库状态同步玩家 {0} 的进度: records={1}, granted={2}, revoked={3}"
+
 hook:
   placeholder:
     unavailable: "PlaceholderAPI 未挂载，placeholder 条件功能保持关闭"

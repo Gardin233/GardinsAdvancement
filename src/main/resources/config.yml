@@ -14,3 +14,14 @@ fallback-icon: STONE
 placeholder-check-interval-ticks: 100
 # 启动后延迟初始化的时间，给 CraftEngine 等依赖留出加载时间
 startup-delay-ticks: 60
+
+database:
+ # sqlite 或 mysql
+  type: sqlite
+  file: gardins_advancement.db
+  mysql:
+    host: localhost
+    port: 3306
+    username: root
+    password: 123456
+    database: gardins_advancement

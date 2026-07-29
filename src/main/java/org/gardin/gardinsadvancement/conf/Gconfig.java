@@ -11,6 +11,7 @@ public class Gconfig {
     private final Material fallbackIcon;
     private final long placeholderCheckIntervalTicks;
     private final long startupDelayTicks;
+    private final DatabaseConfig databaseConfig;
 
     public Gconfig(
             String language,
@@ -20,7 +21,8 @@ public class Gconfig {
             String defaultTabBackground,
             Material fallbackIcon,
             long placeholderCheckIntervalTicks,
-            long startupDelayTicks
+            long startupDelayTicks,
+            DatabaseConfig databaseConfig
     ) {
         this.language = language;
         this.debug = debug;
@@ -30,6 +32,7 @@ public class Gconfig {
         this.fallbackIcon = fallbackIcon;
         this.placeholderCheckIntervalTicks = placeholderCheckIntervalTicks;
         this.startupDelayTicks = startupDelayTicks;
+        this.databaseConfig = databaseConfig;
     }
 
     public String getLanguage() {
@@ -62,5 +65,9 @@ public class Gconfig {
 
     public long getStartupDelayTicks() {
         return startupDelayTicks;
+    }
+
+    public DatabaseConfig getDatabaseConfig() {
+        return databaseConfig;
     }
 }

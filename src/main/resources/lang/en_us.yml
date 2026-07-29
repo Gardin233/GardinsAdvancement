@@ -138,6 +138,15 @@ service:
   manual_grant_all_applied: "&fGranted all advancements to player {0}, added {1} nodes, and synchronized the cache tree"
   manual_revoke_all_applied: "&fRevoked all advancements from player {0}, removed {1} nodes, and synchronized the cache tree"
 
+storage:
+  connected: "&fPlayer advancement storage connected, mode={0}"
+  connect_failed: "&cFailed to connect player advancement storage: mode={0}, reason={1}"
+  load_failed: "&cFailed to load advancement storage for player {0}: {1}"
+  save_failed: "&cFailed to save advancement state for player {0}: advancement={1}, reason={2}"
+  closed: "&fPlayer advancement storage closed, mode={0}"
+  folder_create_failed: "&eFailed to create SQLite data folder: {0}"
+  player_sync_complete: "&fSynchronized player {0} from database state: records={1}, granted={2}, revoked={3}"
+
 hook:
   placeholder:
     unavailable: "PlaceholderAPI is not hooked, placeholder condition support remains disabled"

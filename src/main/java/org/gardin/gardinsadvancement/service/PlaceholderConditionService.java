@@ -12,6 +12,8 @@ import org.gardin.gardinsadvancement.advancementregister.GAdvancement;
 import org.gardin.gardinsadvancement.condition.PlaceholderConditionExpression;
 import org.gardin.gardinsadvancement.conf.Gconfig;
 import org.gardin.gardinsadvancement.hook.PlaceholderHook;
+import org.gardin.gardinsadvancement.storage.AdvancementStorage;
+import org.gardin.gardinsadvancement.storage.PlayerAdvancementRecord;
 import org.gardin.gardinsadvancement.textchecker.ContentDocument;
 import org.gardin.gardinsadvancement.util.GLogger;
 
@@ -41,6 +43,7 @@ public class PlaceholderConditionService {
     private final List<TrackedAdvancement> trackedAdvancementOrder;
     private final Map<String, TrackedAdvancement> trackedAdvancements;
     private final Map<String, PlaceholderRegistration> placeholderRegistrations;
+    private AdvancementStorage storage;
     private final Map<UUID, PlayerPlaceholderState> playerStates = new HashMap<>();
     private BukkitTask task;
 
@@ -48,10 +51,12 @@ public class PlaceholderConditionService {
             JavaPlugin plugin,
             Gconfig gconfig,
             ContentDocument contentDocument,
-            AdvancementRegister advancementRegister
+            AdvancementRegister advancementRegister,
+            AdvancementStorage storage
     ) {
         this.plugin = plugin;
         this.gconfig = gconfig;
+        this.storage = storage;
         this.placeholderHook = new PlaceholderHook(plugin);
         this.registeredAdvancements = Map.copyOf(advancementRegister.getRegisteredAdvancements());
         AdvancementIndex advancementIndex = buildAdvancementIndex(
@@ -96,11 +101,13 @@ public class PlaceholderConditionService {
 
     public void reloadSettings(Gconfig gconfig) {
         this.gconfig = gconfig;
-        if (task != null) {
-            stop();
-            start();
-            GLogger.infoLang("service.reloaded", gconfig.getPlaceholderCheckIntervalTicks());
-        }
+        stop();
+        start();
+        GLogger.infoLang("service.reloaded", gconfig.getPlaceholderCheckIntervalTicks());
+    }
+
+    public void setStorage(AdvancementStorage storage) {
+        this.storage = storage;
     }
 
     public void stop() {
@@ -122,6 +129,7 @@ public class PlaceholderConditionService {
         }
         Advancement advancement = managedAdvancement.advancement();
         if (advancement.isGranted(player)) {
+            persistAdvancementState(player.getUniqueId(), managedAdvancement.key(), true, System.currentTimeMillis());
             syncPlayerState(player);
             GLogger.debugLang("service.manual_grant_skipped", player.getName(), managedAdvancement.key());
             return true;
@@ -129,6 +137,9 @@ public class PlaceholderConditionService {
 
         advancement.grant(player);
         boolean granted = advancement.isGranted(player);
+        if (granted) {
+            persistAdvancementState(player.getUniqueId(), managedAdvancement.key(), true, System.currentTimeMillis());
+        }
         syncPlayerState(player);
         if (!granted) {
             GLogger.warningLang("service.manual_grant_failed", player.getName(), managedAdvancement.key());
@@ -150,6 +161,7 @@ public class PlaceholderConditionService {
         for (ManagedAdvancement managedAdvancement : ordered) {
             Advancement advancement = managedAdvancement.advancement();
             if (advancement.isGranted(player)) {
+                persistAdvancementState(player.getUniqueId(), managedAdvancement.key(), true, System.currentTimeMillis());
                 continue;
             }
             advancement.grant(player);
@@ -157,6 +169,7 @@ public class PlaceholderConditionService {
                 GLogger.warningLang("service.manual_grant_failed", player.getName(), managedAdvancement.key());
                 continue;
             }
+            persistAdvancementState(player.getUniqueId(), managedAdvancement.key(), true, System.currentTimeMillis());
             grantedCount++;
             syncPlayerState(player);
             executeCommands(player, managedAdvancement.key(), managedAdvancement.commands());
@@ -182,6 +195,7 @@ public class PlaceholderConditionService {
             advancement.revoke(player);
             revoked = true;
         }
+        persistAdvancementState(player.getUniqueId(), managedAdvancement.key(), false, null);
         syncPlayerState(player);
         if (!revoked) {
             GLogger.debugLang("service.manual_revoke_skipped", player.getName(), managedAdvancement.key());
@@ -202,9 +216,11 @@ public class PlaceholderConditionService {
         for (ManagedAdvancement managedAdvancement : ordered) {
             Advancement advancement = managedAdvancement.advancement();
             if (!advancement.isGranted(player)) {
+                persistAdvancementState(player.getUniqueId(), managedAdvancement.key(), false, null);
                 continue;
             }
             advancement.revoke(player);
+            persistAdvancementState(player.getUniqueId(), managedAdvancement.key(), false, null);
             revokedCount++;
         }
         syncPlayerState(player);
@@ -219,12 +235,63 @@ public class PlaceholderConditionService {
     }
 
     public void syncPlayerState(Player player) {
+        syncPlayerState(player, true);
+    }
+
+    public void synchronizePlayerFromStorage(Player player) {
+        if (player == null) {
+            return;
+        }
+        if (storage == null || !storage.isAvailable()) {
+            syncPlayerState(player, false);
+            return;
+        }
+        Map<String, PlayerAdvancementRecord> records = storage.loadPlayerRecords(player.getUniqueId());
+        int appliedFinished = 0;
+        int appliedRevoked = 0;
+        for (ManagedAdvancement managedAdvancement : managedAdvancements.values()) {
+            PlayerAdvancementRecord record = records.get(managedAdvancement.key());
+            boolean shouldBeFinished = record != null && record.finished();
+            Advancement advancement = managedAdvancement.advancement();
+            if (record == null) {
+                persistAdvancementState(player.getUniqueId(), managedAdvancement.key(), false, null);
+            }
+            if (shouldBeFinished) {
+                if (!advancement.isGranted(player)) {
+                    advancement.grant(player, false);
+                }
+                if (advancement.isGranted(player)) {
+                    appliedFinished++;
+                }
+                continue;
+            }
+            if (advancement.isGranted(player)) {
+                advancement.revoke(player);
+                appliedRevoked++;
+            }
+            if (advancement.getProgression(player) != 0) {
+                advancement.setProgression(player, 0, false);
+            }
+        }
+        syncPlayerState(player, false);
+        GLogger.infoLang(
+                "storage.player_sync_complete",
+                player.getName(),
+                records.size(),
+                appliedFinished,
+                appliedRevoked
+        );
+    }
+
+    private void syncPlayerState(Player player, boolean refreshVisibleProgress) {
         if (player == null) {
             return;
         }
         PlayerPlaceholderState state = createPlayerState(player);
         playerStates.put(player.getUniqueId(), state);
-        refreshVisibleProgress(player, state);
+        if (refreshVisibleProgress) {
+            refreshVisibleProgress(player, state);
+        }
         GLogger.debugLang(
                 "service.player_state_synchronized",
                 player.getName(),
@@ -587,6 +654,7 @@ public class PlaceholderConditionService {
             GLogger.debugLang("service.player_granted", player.getName(), trackedAdvancement.key());
         }
         releaseAdvancementDependencies(player, state, trackedAdvancement);
+        persistAdvancementState(player.getUniqueId(), trackedAdvancement.key(), true, System.currentTimeMillis());
         executeCommands(player, trackedAdvancement.key(), trackedAdvancement.commands());
     }
 
@@ -679,6 +747,13 @@ public class PlaceholderConditionService {
             onlinePlayers.add(player.getUniqueId());
         }
         playerStates.keySet().removeIf(uuid -> !onlinePlayers.contains(uuid));
+    }
+
+    private void persistAdvancementState(UUID playerUuid, String advancementKey, boolean finished, Long completedAt) {
+        if (storage == null || !storage.isAvailable()) {
+            return;
+        }
+        storage.saveAdvancementState(playerUuid, advancementKey, finished, completedAt);
     }
 
     private record CompiledTracking(

@@ -3,6 +3,7 @@ package org.gardin.gardinsadvancement.textchecker;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.gardin.gardinsadvancement.conf.DatabaseConfig;
 import org.gardin.gardinsadvancement.conf.Gconfig;
 import org.gardin.gardinsadvancement.util.Lang;
 
@@ -39,6 +40,7 @@ public class ConfLoader {
                 0L,
                 config.getLong("startup-delay-ticks", 60L)
         );
+        DatabaseConfig databaseConfig = loadDatabaseConfig(config);
         return new Gconfig(
                 YamlLexicalParser.readString(config, "language", "zh_cn"),
                 debug,
@@ -47,7 +49,8 @@ public class ConfLoader {
                 defaultTabBackground,
                 fallbackIcon,
                 placeholderCheckIntervalTicks,
-                startupDelayTicks
+                startupDelayTicks,
+                databaseConfig
         );
     }
 
@@ -62,5 +65,24 @@ public class ConfLoader {
         plugin.saveDefaultConfig();
         plugin.reloadConfig();
         return plugin.getConfig().getString("language", "zh_cn");
+    }
+
+    private DatabaseConfig loadDatabaseConfig(FileConfiguration config) {
+        DatabaseConfig.DatabaseType type = DatabaseConfig.DatabaseType.fromRaw(
+                config.getString("database.type", "sqlite")
+        );
+        String sqliteFile = YamlLexicalParser.readString(
+                config,
+                "database.file",
+                "gardins_advancement.db"
+        );
+        DatabaseConfig.MysqlConfig mysqlConfig = new DatabaseConfig.MysqlConfig(
+                YamlLexicalParser.readString(config, "database.mysql.host", "localhost"),
+                Math.max(1, config.getInt("database.mysql.port", 3306)),
+                YamlLexicalParser.readString(config, "database.mysql.username", "root"),
+                config.getString("database.mysql.password", ""),
+                YamlLexicalParser.readString(config, "database.mysql.database", "gardins_advancement")
+        );
+        return new DatabaseConfig(type, sqliteFile, mysqlConfig);
     }
 }

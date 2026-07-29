@@ -10,7 +10,11 @@ import org.gardin.gardinsadvancement.commands.commandsRegister;
 import org.gardin.gardinsadvancement.conf.ConfRegister;
 import org.gardin.gardinsadvancement.conf.Gconfig;
 import org.gardin.gardinsadvancement.hook.GardinsAdvancementPlaceholderExpansion;
+import org.gardin.gardinsadvancement.listener.PlayerAdvancementSyncListener;
 import org.gardin.gardinsadvancement.service.PlaceholderConditionService;
+import org.gardin.gardinsadvancement.storage.AdvancementStorage;
+import org.gardin.gardinsadvancement.storage.JdbcAdvancementStorage;
+import org.gardin.gardinsadvancement.storage.NoopAdvancementStorage;
 import org.gardin.gardinsadvancement.tabcreater.TabRegister;
 import org.gardin.gardinsadvancement.textchecker.ContentDocument;
 import org.gardin.gardinsadvancement.textchecker.ContentLoader;
@@ -27,6 +31,7 @@ public final class Gardinsadvancement extends JavaPlugin {
     private PlaceholderConditionService placeholderConditionService;
     private commandsRegister commandsRegister;
     private GardinsAdvancementPlaceholderExpansion placeholderExpansion;
+    private AdvancementStorage advancementStorage = new NoopAdvancementStorage();
     private BukkitTask startupTask;
     private boolean runtimeInitialized;
 
@@ -86,12 +91,17 @@ public final class Gardinsadvancement extends JavaPlugin {
                 tabRegister.getTabList()
         );
         this.advancementRegister.init();
+        this.advancementStorage = createStorage();
+        this.advancementStorage.initialize();
+        getServer().getPluginManager().registerEvents(new PlayerAdvancementSyncListener(this), this);
         this.placeholderConditionService = new PlaceholderConditionService(
                 this,
                 gconfig,
                 contentDocument,
-                advancementRegister
+                advancementRegister,
+                advancementStorage
         );
+        syncOnlinePlayersFromStorage();
         this.placeholderConditionService.start();
         this.runtimeInitialized = true;
 
@@ -117,6 +127,13 @@ public final class Gardinsadvancement extends JavaPlugin {
                 gconfig.getStartupDelayTicks()
         );
         if (this.placeholderConditionService != null) {
+            if (advancementStorage != null) {
+                advancementStorage.close();
+            }
+            this.advancementStorage = createStorage();
+            this.advancementStorage.initialize();
+            this.placeholderConditionService.setStorage(advancementStorage);
+            syncOnlinePlayersFromStorage();
             this.placeholderConditionService.reloadSettings(gconfig);
         }
         if (!runtimeInitialized && startupTask != null) {
@@ -213,6 +230,13 @@ public final class Gardinsadvancement extends JavaPlugin {
         placeholderConditionService.syncPlayerState(player);
     }
 
+    public void syncPlayerAdvancementsFromStorage(Player player) {
+        if (placeholderConditionService == null) {
+            return;
+        }
+        placeholderConditionService.synchronizePlayerFromStorage(player);
+    }
+
     @Override
     public void onDisable() {
         GLogger.infoLang("plugin.disable.start");
@@ -227,6 +251,10 @@ public final class Gardinsadvancement extends JavaPlugin {
         if (placeholderConditionService != null) {
             placeholderConditionService.stop();
         }
+        if (advancementStorage != null) {
+            advancementStorage.close();
+            advancementStorage = new NoopAdvancementStorage();
+        }
         GLogger.infoLang("plugin.disable.complete");
     }
 
@@ -240,5 +268,21 @@ public final class Gardinsadvancement extends JavaPlugin {
             return;
         }
         GLogger.warningLang("hook.placeholder.expansion_register_failed");
+    }
+
+    private AdvancementStorage createStorage() {
+        if (gconfig == null || gconfig.getDatabaseConfig() == null) {
+            return new NoopAdvancementStorage();
+        }
+        return new JdbcAdvancementStorage(getDataFolder(), gconfig.getDatabaseConfig());
+    }
+
+    private void syncOnlinePlayersFromStorage() {
+        if (placeholderConditionService == null) {
+            return;
+        }
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            placeholderConditionService.synchronizePlayerFromStorage(player);
+        }
     }
 }
