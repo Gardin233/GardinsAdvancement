@@ -49,6 +49,7 @@ public final class Gardinsadvancement extends JavaPlugin {
                 gconfig.getDefaultTabBackground(),
                 gconfig.getFallbackIcon(),
                 gconfig.getPlaceholderCheckIntervalTicks(),
+                gconfig.getPlaceholderCheckMaxPlayers(),
                 gconfig.getStartupDelayTicks()
         );
         this.commandsRegister = new commandsRegister(this);
@@ -124,6 +125,7 @@ public final class Gardinsadvancement extends JavaPlugin {
                 gconfig.getDefaultTabBackground(),
                 gconfig.getFallbackIcon(),
                 gconfig.getPlaceholderCheckIntervalTicks(),
+                gconfig.getPlaceholderCheckMaxPlayers(),
                 gconfig.getStartupDelayTicks()
         );
         if (this.placeholderConditionService != null) {
@@ -235,6 +237,13 @@ public final class Gardinsadvancement extends JavaPlugin {
             return;
         }
         placeholderConditionService.synchronizePlayerFromStorage(player);
+    }
+
+    public void unloadPlayerAdvancementCache(Player player) {
+        if (placeholderConditionService == null) {
+            return;
+        }
+        placeholderConditionService.unloadPlayerState(player);
     }
 
     @Override

@@ -33,8 +33,12 @@ public class ConfLoader {
                 "config.yml:fallback-icon"
         );
         long placeholderCheckIntervalTicks = Math.max(
-                20L,
+                1L,
                 config.getLong("placeholder-check-interval-ticks", 100L)
+        );
+        int placeholderCheckMaxPlayers = Math.max(
+                1,
+                config.getInt("placeholder-check-max-players", Integer.MAX_VALUE)
         );
         long startupDelayTicks = Math.max(
                 0L,
@@ -49,6 +53,7 @@ public class ConfLoader {
                 defaultTabBackground,
                 fallbackIcon,
                 placeholderCheckIntervalTicks,
+                placeholderCheckMaxPlayers,
                 startupDelayTicks,
                 databaseConfig
         );

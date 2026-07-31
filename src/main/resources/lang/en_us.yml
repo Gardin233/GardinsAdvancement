@@ -3,7 +3,7 @@ logger:
   debug_disabled: "&eDebug logging disabled"
 
 plugin:
-  config_summary: "&8[DEBUG]&r Config summary: language={0}, content-folder={1}, copy-example-content={2}, default-tab-background={3}, fallback-icon={4}, placeholder-check-interval-ticks={5}, startup-delay-ticks={6}"
+  config_summary: "&8[DEBUG]&r Config summary: language={0}, content-folder={1}, copy-example-content={2}, default-tab-background={3}, fallback-icon={4}, placeholder-check-interval-ticks={5}, placeholder-check-max-players={6}, startup-delay-ticks={7}"
   enable:
     loading_base: "&fLoading base configuration and language resources"
     no_startup_delay: "&fNo startup delay configured, initializing runtime immediately"
@@ -116,17 +116,18 @@ tab:
 service:
   placeholder_api_missing: "&eNo available PlaceholderAPI was detected. This plugin only supports placeholder expressions, so the condition service was not started"
   no_tracked_advancements: "&eNo pollable placeholder conditions or progress displays were found, so the condition service was not started"
-  start: "&fStarting placeholder condition service with {0} tracked advancements, {1} placeholders, interval={2} ticks"
+  start: "&fStarting placeholder condition service with {0} tracked advancements, {1} placeholders, interval={2} ticks, max-players-per-run={3}"
   enabled: "&aPlaceholder condition checking enabled"
-  reloaded: "&fPlaceholder condition service restarted with new settings, interval={0} ticks"
+  reloaded: "&fPlaceholder condition service restarted with new settings, interval={0} ticks, max-players-per-run={1}"
   stopped: "&fPlaceholder condition service stopped"
-  poll_start: "Polling online players for placeholder conditions, online={0}, cachedPlayers={1}"
+  poll_start: "Polling online players for placeholder conditions, trackedOnline={0}, cachedPlayers={1}, processingNow={2}, nextWindowStart={3}"
   no_placeholder_change: "Player {0} has no placeholder value changes, skipping advancement evaluation"
   no_affected_advancements: "Player {0} has placeholder changes, but no unfinished advancements were affected"
   evaluating: "Evaluating advancement condition for player {0}: {1}"
   player_granted: "Player {0} satisfied placeholder conditions and was granted {1}"
   player_granted_by_progress: "Player {0} completed advancement {1} through its progress bar"
   player_cache_released: "All placeholder caches were released for player {0}"
+  player_state_unloaded: "Unloaded polling cache for player {0}, cachedPlayers={1}, trackedOnline={2}"
   condition_compiled: "Compiled placeholder condition: {0} -> {1}"
   condition_parse_failed: "&cFailed to parse placeholder condition: {0} -> {1}"
   no_valid_expressions: "&eAdvancement {0} does not provide a valid placeholder expression and was skipped"

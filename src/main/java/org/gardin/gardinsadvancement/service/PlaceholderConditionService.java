@@ -20,7 +20,6 @@ import org.gardin.gardinsadvancement.util.GLogger;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -45,6 +44,8 @@ public class PlaceholderConditionService {
     private final Map<String, PlaceholderRegistration> placeholderRegistrations;
     private AdvancementStorage storage;
     private final Map<UUID, PlayerPlaceholderState> playerStates = new HashMap<>();
+    private final Set<UUID> trackedOnlinePlayers = new LinkedHashSet<>();
+    private int pollingCursor;
     private BukkitTask task;
 
     public PlaceholderConditionService(
@@ -83,19 +84,21 @@ public class PlaceholderConditionService {
             return;
         }
         long interval = gconfig.getPlaceholderCheckIntervalTicks();
+        bootstrapTrackedOnlinePlayers();
         GLogger.infoLang(
                 "service.start",
                 trackedAdvancementOrder.size(),
                 placeholderRegistrations.size(),
-                interval
+                interval,
+                gconfig.getPlaceholderCheckMaxPlayers()
         );
         this.task = plugin.getServer().getScheduler().runTaskTimer(
                 plugin,
-                this::checkOnlinePlayers,
+                this::pollTrackedPlayers,
                 interval,
                 interval
         );
-        checkOnlinePlayers();
+        pollTrackedPlayers();
         GLogger.infoLang("service.enabled");
     }
 
@@ -103,7 +106,11 @@ public class PlaceholderConditionService {
         this.gconfig = gconfig;
         stop();
         start();
-        GLogger.infoLang("service.reloaded", gconfig.getPlaceholderCheckIntervalTicks());
+        GLogger.infoLang(
+                "service.reloaded",
+                gconfig.getPlaceholderCheckIntervalTicks(),
+                gconfig.getPlaceholderCheckMaxPlayers()
+        );
     }
 
     public void setStorage(AdvancementStorage storage) {
@@ -116,6 +123,21 @@ public class PlaceholderConditionService {
             task = null;
             GLogger.infoLang("service.stopped");
         }
+    }
+
+    public void unloadPlayerState(Player player) {
+        if (player == null) {
+            return;
+        }
+        trackedOnlinePlayers.remove(player.getUniqueId());
+        playerStates.remove(player.getUniqueId());
+        normalizePollingCursor();
+        GLogger.debugLang(
+                "service.player_state_unloaded",
+                player.getName(),
+                playerStates.size(),
+                trackedOnlinePlayers.size()
+        );
     }
 
     public boolean grantAdvancement(Player player, String tabId, String advancementId) {
@@ -242,6 +264,7 @@ public class PlaceholderConditionService {
         if (player == null) {
             return;
         }
+        trackOnlinePlayer(player);
         if (storage == null || !storage.isAvailable()) {
             syncPlayerState(player, false);
             return;
@@ -287,6 +310,7 @@ public class PlaceholderConditionService {
         if (player == null) {
             return;
         }
+        trackOnlinePlayer(player);
         PlayerPlaceholderState state = createPlayerState(player);
         playerStates.put(player.getUniqueId(), state);
         if (refreshVisibleProgress) {
@@ -300,14 +324,16 @@ public class PlaceholderConditionService {
         );
     }
 
-    private void checkOnlinePlayers() {
-        cleanupOfflinePlayers();
+    private void pollTrackedPlayers() {
+        List<Player> polledPlayers = selectPlayersForPolling();
         GLogger.debugLang(
                 "service.poll_start",
-                plugin.getServer().getOnlinePlayers().size(),
-                playerStates.size()
+                trackedOnlinePlayers.size(),
+                playerStates.size(),
+                polledPlayers.size(),
+                pollingCursor
         );
-        for (Player player : plugin.getServer().getOnlinePlayers()) {
+        for (Player player : polledPlayers) {
             evaluatePlayer(player);
         }
     }
@@ -741,12 +767,66 @@ public class PlaceholderConditionService {
         return trimmed;
     }
 
-    private void cleanupOfflinePlayers() {
-        Set<UUID> onlinePlayers = new HashSet<>();
+    private void bootstrapTrackedOnlinePlayers() {
         for (Player player : plugin.getServer().getOnlinePlayers()) {
-            onlinePlayers.add(player.getUniqueId());
+            trackedOnlinePlayers.add(player.getUniqueId());
         }
-        playerStates.keySet().removeIf(uuid -> !onlinePlayers.contains(uuid));
+        normalizePollingCursor();
+    }
+
+    private void trackOnlinePlayer(Player player) {
+        trackedOnlinePlayers.add(player.getUniqueId());
+        normalizePollingCursor();
+    }
+
+    private List<Player> selectPlayersForPolling() {
+        List<Player> onlinePlayers = snapshotTrackedPlayers();
+        if (onlinePlayers.isEmpty()) {
+            pollingCursor = 0;
+            return List.of();
+        }
+        int batchSize = Math.min(gconfig.getPlaceholderCheckMaxPlayers(), onlinePlayers.size());
+        int startIndex = Math.min(pollingCursor, onlinePlayers.size() - 1);
+        List<Player> result = new ArrayList<>(batchSize);
+        for (int index = 0; index < batchSize; index++) {
+            result.add(onlinePlayers.get((startIndex + index) % onlinePlayers.size()));
+        }
+        pollingCursor = (startIndex + batchSize) % onlinePlayers.size();
+        return result;
+    }
+
+    private List<Player> snapshotTrackedPlayers() {
+        List<Player> players = new ArrayList<>(trackedOnlinePlayers.size());
+        List<UUID> stalePlayers = new ArrayList<>();
+        for (UUID playerId : trackedOnlinePlayers) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player == null || !player.isOnline()) {
+                stalePlayers.add(playerId);
+                continue;
+            }
+            players.add(player);
+        }
+        if (!stalePlayers.isEmpty()) {
+            for (UUID playerId : stalePlayers) {
+                trackedOnlinePlayers.remove(playerId);
+                playerStates.remove(playerId);
+            }
+        }
+        players.sort(Comparator.comparing(Player::getUniqueId));
+        normalizePollingCursor(players.size());
+        return players;
+    }
+
+    private void normalizePollingCursor() {
+        normalizePollingCursor(trackedOnlinePlayers.size());
+    }
+
+    private void normalizePollingCursor(int size) {
+        if (size <= 0) {
+            pollingCursor = 0;
+            return;
+        }
+        pollingCursor = Math.floorMod(pollingCursor, size);
     }
 
     private void persistAdvancementState(UUID playerUuid, String advancementKey, boolean finished, Long completedAt) {

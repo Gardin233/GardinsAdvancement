@@ -3,7 +3,7 @@ logger:
   debug_disabled: "&e调试日志已关闭"
 
 plugin:
-  config_summary: "&8[DEBUG]&r 配置摘要: language={0}, content-folder={1}, copy-example-content={2}, default-tab-background={3}, fallback-icon={4}, placeholder-check-interval-ticks={5}, startup-delay-ticks={6}"
+  config_summary: "&8[DEBUG]&r 配置摘要: language={0}, content-folder={1}, copy-example-content={2}, default-tab-background={3}, fallback-icon={4}, placeholder-check-interval-ticks={5}, placeholder-check-max-players={6}, startup-delay-ticks={7}"
   enable:
     loading_base: "&f正在加载基础配置与语言资源"
     no_startup_delay: "&f未配置启动延迟，立即初始化运行时"
@@ -116,17 +116,18 @@ tab:
 service:
   placeholder_api_missing: "&e未检测到可用的 PlaceholderAPI，插件仅支持 placeholder 表达式判定，条件服务未启动"
   no_tracked_advancements: "&e未发现可轮询的进度条件或 progress 显示，条件服务未启动"
-  start: "&f开始启动 placeholder 条件服务，已注册 {0} 个进度、{1} 个占位符，轮询间隔={2} ticks"
+  start: "&f开始启动 placeholder 条件服务，已注册 {0} 个进度、{1} 个占位符，轮询间隔={2} ticks，单轮最大玩家数={3}"
   enabled: "&a已启用 placeholder 条件检查"
-  reloaded: "&fplaceholder 条件服务已按新设置重新启动，当前轮询间隔={0} ticks"
+  reloaded: "&fplaceholder 条件服务已按新设置重新启动，当前轮询间隔={0} ticks，单轮最大玩家数={1}"
   stopped: "&fplaceholder 条件服务已停止"
-  poll_start: "开始轮询在线玩家 placeholder 条件，当前在线: {0}，缓存玩家数={1}"
+  poll_start: "开始轮询在线玩家 placeholder 条件，当前追踪在线={0}，缓存玩家数={1}，本轮处理={2}，下一窗口起点={3}"
   no_placeholder_change: "玩家 {0} 的占位符数据未发生变化，跳过成就判定"
   no_affected_advancements: "玩家 {0} 的占位符虽有变化，但没有影响到任何未完成进度"
   evaluating: "检查玩家 {0} 的进度条件: {1}"
   player_granted: "玩家 {0} 满足 placeholder 条件，授予进度 {1}"
   player_granted_by_progress: "玩家 {0} 的 progress 达到完成条件，授予进度 {1}"
   player_cache_released: "玩家 {0} 的 placeholder 缓存已全部释放"
+  player_state_unloaded: "已卸载玩家 {0} 的轮询缓存，剩余缓存玩家数={1}，追踪在线数={2}"
   condition_compiled: "已编译 placeholder 条件: {0} -> {1}"
   condition_parse_failed: "&cplaceholder 条件解析失败: {0} -> {1}"
   no_valid_expressions: "&e进度 {0} 未提供有效 placeholder 表达式，已跳过自动判断"

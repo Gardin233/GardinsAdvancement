@@ -10,6 +10,7 @@ public class Gconfig {
     private final String defaultTabBackground;
     private final Material fallbackIcon;
     private final long placeholderCheckIntervalTicks;
+    private final int placeholderCheckMaxPlayers;
     private final long startupDelayTicks;
     private final DatabaseConfig databaseConfig;
 
@@ -21,6 +22,7 @@ public class Gconfig {
             String defaultTabBackground,
             Material fallbackIcon,
             long placeholderCheckIntervalTicks,
+            int placeholderCheckMaxPlayers,
             long startupDelayTicks,
             DatabaseConfig databaseConfig
     ) {
@@ -31,6 +33,7 @@ public class Gconfig {
         this.defaultTabBackground = defaultTabBackground;
         this.fallbackIcon = fallbackIcon;
         this.placeholderCheckIntervalTicks = placeholderCheckIntervalTicks;
+        this.placeholderCheckMaxPlayers = placeholderCheckMaxPlayers;
         this.startupDelayTicks = startupDelayTicks;
         this.databaseConfig = databaseConfig;
     }
@@ -61,6 +64,10 @@ public class Gconfig {
 
     public long getPlaceholderCheckIntervalTicks() {
         return placeholderCheckIntervalTicks;
+    }
+
+    public int getPlaceholderCheckMaxPlayers() {
+        return placeholderCheckMaxPlayers;
     }
 
     public long getStartupDelayTicks() {
