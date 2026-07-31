@@ -1,0 +1,108 @@
+branchs:
+  mining_line:
+    advancements:
+      mining_branch_root:
+        type: root
+        conditions:
+          - "placeholder: %player_level% >= 4"
+        data:
+          title: "&7采矿支线起点"
+          icon: minecraft:stone_pickaxe
+          frame: task
+          show_toast: true
+          announce_chat: false
+          x: 3
+          y: 3
+          description:
+            - "&7该 root 会在挂载时自动改为普通节点"
+            - "&7并把 parent 绑定到引用它的进度"
+
+      mining_branch_iron:
+        type: common
+        parent: mining_branch_root
+        conditions:
+          - "placeholder: %player_level% >= 8"
+        branch:
+          - mining_deep_line
+        data:
+          title: "&f冶炼铁锭"
+          icon: minecraft:iron_ingot
+          frame: goal
+          show_toast: true
+          announce_chat: true
+          x: 5
+          y: 3
+          description:
+            - "&7分支内节点也可以继续挂载其他分支"
+
+  mining_deep_line:
+    advancements:
+      mining_deep_root:
+        type: root
+        conditions:
+          - "placeholder: %player_level% >= 12"
+        data:
+          title: "&8深层勘探"
+          icon: minecraft:lantern
+          frame: goal
+          show_toast: true
+          announce_chat: true
+          x: 7
+          y: 2
+          description:
+            - "&7这是被 mining_line 内部再次引用的子分支"
+
+      mining_deep_reward:
+        type: common
+        parent: mining_deep_root
+        commands:
+          - "say %player_name% 已完成 mining_deep_reward"
+        data:
+          title: "&b洞穴奖励"
+          icon: minecraft:diamond
+          frame: challenge
+          show_toast: true
+          announce_chat: true
+          x: 9
+          y: 2
+          description:
+            - "&7用于测试分支递归挂载"
+
+tabs:
+  branch_demo:
+    display-mode: direct
+    background: "minecraft:textures/gui/advancements/backgrounds/stone.png"
+    advancements:
+      branch_demo_root:
+        type: root
+        conditions:
+          - "placeholder: %player_level% >= 0"
+        data:
+          title: "&a分支系统示例"
+          icon: minecraft:compass
+          frame: task
+          show_toast: true
+          announce_chat: false
+          x: 1
+          y: 1
+          description:
+            - "&7这是主树 root"
+
+      branch_anchor:
+        type: common
+        conditions:
+          - "placeholder: %player_level% >= 0"
+        parent: branch_demo_root
+        branch:
+          - mining_line
+        data:
+          title: "&e分支挂载点"
+          icon: minecraft:cartography_table
+          frame: task
+          show_toast: true
+          announce_chat: false
+          x: 2
+          y: 2
+          description:
+            - "&7在这个节点下挂载 mining_line"
+            - "&7同一个 branch 不能在别处再次引用"
