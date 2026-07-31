@@ -11,11 +11,11 @@ default-tab-background: "minecraft:textures/gui/advancements/backgrounds/stone.p
 fallback-icon: STONE
 # Placeholder 条件轮询间隔，最小为 1 tick
 # 调小会更快判定成就，调大则更省性能
-placeholder-check-interval-ticks: 100
+placeholder-check-interval-ticks: 2
 # 每个轮询间隔内最多检测多少名在线玩家
 # 配合固定窗口机制使用，可把在线玩家查询分摊到多个间隔
 # 当在线玩家少于该值时会直接全量检测
-placeholder-check-max-players: 50
+placeholder-check-max-players: 5
 # 启动后延迟初始化的时间，给 CraftEngine 等依赖留出加载时间
 startup-delay-ticks: 60
 

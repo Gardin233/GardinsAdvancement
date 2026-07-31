@@ -56,6 +56,7 @@ progress:
 - `<`
 - `>`
 - `==`
+- `!=`
 - `>=`
 - `<=`
 - `&&`
@@ -105,6 +106,71 @@ tabs:
           description:
             - "&a这个普通节点绑定在 novice_root 下"
 ```
+## 分支系统
+成就树不可避免地会随着编写而变得难以阅读，所以我制作了分支系统，您只需要编写如下的配置便可封装你的成就树
+```yaml
+branchs:
+  mining_line:
+    advancements:
+      mining_branch_root:
+        type: root
+        conditions:
+          - "placeholder: %player_level% >= 4"
+        data:
+          title: "&7采矿支线起点"
+          icon: minecraft:stone_pickaxe
+          frame: task
+          show_toast: true
+          announce_chat: false
+          x: 3
+          y: 3
+          description:
+            - "&7该 root 会在挂载时自动改为普通节点"
+            - "&7并把 parent 绑定到引用它的进度"
+
+      mining_branch_iron:
+        type: common
+        parent: mining_branch_root
+        conditions:
+          - "placeholder: %player_level% >= 8"
+        branch:
+          - mining_deep_line # other branch
+        data:
+          title: "&f冶炼铁锭"
+          icon: minecraft:iron_ingot
+          frame: goal
+          show_toast: true
+          announce_chat: true
+          x: 5
+          y: 3
+          description:
+            - "&7分支内节点也可以继续挂载其他分支"
+
+```
+此时只需要在tabs的节点中这样编写就可以让那个分支以branch_anchor为父节点，生成在这个tab下！
+```yaml
+      branch_anchor:
+        type: common
+        conditions:
+          - "placeholder: %player_level% >= 0"
+        parent: branch_demo_root
+        branch:
+          - mining_line
+        data:
+          title: "&e分支挂载点"
+          icon: minecraft:cartography_table
+          frame: task
+          show_toast: true
+          announce_chat: false
+          x: 2
+          y: 2
+          description:
+            - "&7在这个节点下挂载 mining_line"
+            - "&7同一个 branch 不能在别处再次引用"
+```
+
+
+注意:分支不可复用，分支内节点共享父节点的命名空间，所以避免同一tab内的进度id相同!
 ## Placeholder
 
 我们也拥有自己的papi变量实现！
@@ -117,6 +183,8 @@ Gardin's Advancement 的设计目标并不是替代事件监听系统，而是�
 ## 性能问题
 
 本插件在启动时会预编译条件表达式并生成变量索引与成就一一对应，解析包含在表达式中的占位符,这样做避免了重复读取相同的占位符
+
+我使用固定窗口作为轮询压力的解决方案之一，避免短时间检测过多玩家导致服务器tps的不稳定
 
 每次进行占位符读取，仅当占位符内容与缓存内容不一致时才会进行和此变量相关联的进度的条件检测
 
